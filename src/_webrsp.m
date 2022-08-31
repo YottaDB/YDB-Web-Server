@@ -19,13 +19,9 @@ RESPOND ; find entry point to handle request and call it
  ; Split the query string
  D QSPLIT(HTTPREQ("query"),.HTTPARGS) I $G(HTTPERR) QUIT
  ;
- ; %WNULL Support for VistA - Use this device to prevent VistA from writing to you.
+ ; %WNULL opens /dev/null so that runtime routines can write out debugging information without it reaching the end user
  N %WNULL S %WNULL=""
- I $P($SY,",")=47 S %WNULL="/dev/null"
- I $L($SY,":")=2 D
- . I $ZVERSION(1)=2 s %WNULL="//./nul"
- . I $ZVERSION(1)=3 s %WNULL="/dev/null"
- I %WNULL="" S $EC=",U-OS-NOT-SUPPORTED,"
+ S %WNULL="/dev/null"
  O %WNULL U %WNULL
  ;
  N BODY M BODY=HTTPREQ("body") K HTTPREQ("body")
@@ -281,7 +277,7 @@ SENDATA ; write out the data as an HTTP response
  I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Max-Age: 86400"_$C(13,10))
  D W("Access-Control-Allow-Origin: *"_$C(13,10))
  ;
- I $P($SY,",")=47,'$G(NOGZIP),$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
+ I '$G(NOGZIP),$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
  ;
  D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
  I 'SIZE!(HTTPREQ("method")="HEAD") D FLUSH Q  ; flush buffer and quit if empty
@@ -310,8 +306,7 @@ SENDATA ; write out the data as an HTTP response
  ;
 W(DATA) ; EP to write data
  ; ZEXCEPT: %WBUFF - Buffer in Symbol Table
- I $P($SY,",")=47,$ZL(%WBUFF)+$ZL(DATA)>32000 D FLUSH
- I $L($SY,":")=2,$L(%WBUFF)+$L(DATA)>32000 D FLUSH
+ I $ZL(%WBUFF)+$ZL(DATA)>32000 D FLUSH
  S %WBUFF=%WBUFF_DATA
  QUIT
  ;
@@ -410,9 +405,9 @@ AUTHEN(HTTPAUTH) ; Authenticate User against VISTA from HTTP Authorization Heade
  QUIT 0
  ;
  ; Portions of this code are public domain, but it was extensively modified
- ; Copyright 2013-2020 Sam Habiel
- ; Copyright 2018-2019 Christopher Edwards
- ; Copyright 2022 YottaDB LLC
+ ; Copyright (c) 2013-2020 Sam Habiel
+ ; Copyright (c) 2018-2019 Christopher Edwards
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

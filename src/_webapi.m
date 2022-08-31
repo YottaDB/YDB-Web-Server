@@ -294,38 +294,24 @@ rpc2(result,rpcName,start,direction,body) ; Demo entry point using parameters
  ;
 FILESYS(RESULT,ARGS) ; Handle filesystem/*
  I '$D(ARGS)&$D(PATHSEG) S ARGS("*")=PATHSEG
- N ISGTM S ISGTM=$P($SY,",")=47
- N ISCACHE S ISCACHE=$L($SY,":")=2
  N PATH
  ;
  ; Where is our home? If any home!
- I ('$G(NOGBL)),($G(^%webhome)'="") D
- . I ISGTM S $ZD=^%webhome ; GT.M
- . I ISCACHE N % S %=$ZU(168,^%webhome) ; Cache
+ I '$G(NOGBL),$G(^%webhome)'="" S $ZD=^%webhome
  ;
  ; Ok, get the actual path
- I ISGTM S PATH=$ZDIRECTORY_ARGS("*") ; GT.M Only!
- I ISCACHE S PATH=$ZU(168)_ARGS("*") ; Cache Only!
+ S PATH=$ZDIRECTORY_ARGS("*")
  ;
- ; GT.M errors out on FNF; Cache blocks. Need timeout and else.
+ ; GT.M errors out on FNF; Need timeout and else.
  N $ET S $ET="G FILESYSE"
  ;
  ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
- I ISGTM O PATH:(REWIND:READONLY:FIXED:CHSET="M")
- ;
- ; This mess for Cache!
- N POP S POP=0
- I ISCACHE O PATH:("RU"):0  E  S POP=1  ; Cache must have a timeout; U = undefined.
- I POP G FILESYSE
- ;
- ; Prevent End of file Errors for Cache. Set DSM mode for that.
- I ISCACHE D $SYSTEM.Process.SetZEOF(1) ; Cache stuff!!
+ O PATH:(REWIND:READONLY:FIXED:CHSET="M")
  ;
  ; Set content-cache value; defaults to one week.
  set RESULT("cache")=604800
  ;
  ; Get mime type
- ; TODO: Really really needs to be in a file
  ; This isn't complete, by any means; it just grabs the most likely types to be
  ; found on an M Web Server. A few common Microsoft types are supported, but
  ; few other vendor-specific types are. Also, there are a few Mumps-centric
@@ -386,9 +372,9 @@ FILESYSE ; 500
  D setError^%webutils("500",$S($P($SY,",")=47:$ZS,1:$ZE))
  QUIT
  ;
- ; Copyright 2013-2020 Sam Habiel
- ; Copyright 2018 Kenneth McLoghlen
- ; Copyright 2022 YottaDB LLC
+ ; Copyright (c) 2013-2020 Sam Habiel
+ ; Copyright (c) 2018 Kenneth McLoghlen
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

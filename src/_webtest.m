@@ -3,7 +3,6 @@
  ; Requires M-Unit
  ;
 test if $text(^%ut)="" quit
- if $p($sy,",")'=47 quit
  do EN^%ut($t(+0),3)
  do cov
  quit
@@ -640,9 +639,9 @@ covlist ; Coverage List for ACTIVE (non-test) routines
  ;;
 EOR ;
  ;
- ; Copyright 2018-2020 Sam Habiel
- ; Copyright 2019 Christopher Edwards
- ; Copyright 2022 YottaDB LLC
+ ; Copyright (c) 2018-2020 Sam Habiel
+ ; Copyright (c) 2019 Christopher Edwards
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

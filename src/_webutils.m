@@ -11,9 +11,6 @@ LTRIM(%X) ; Trim whitespace from left side of string
  Q $E(%X,%L,%R)
  ;
 URLENC(X) ; Encode a string for use in a URL
- I $L($SY,":")=2 Q $ZCONVERT(X,"O","URL")  ; Cache
- I '$P($SY,",")=47 S $EC=",U-UNSUPPORTED-SYSTEM,"
- ;
  ; This algorithm is based on https://github.com/lparenteau/DataBallet/blob/master/r/url.m
  ; The old algorithm didn't work for non-UTF8 characters and was designed around ASCII only
  ; Output variable
@@ -33,9 +30,6 @@ URLENC(X) ; Encode a string for use in a URL
  Q ENCODED
  ;
 URLDEC(X,PATH) ; Decode a URL-encoded string
- I $L($SY,":")=2 Q $ZCONVERT(X,"I","URL")  ; Cache
- I '$P($SY,",")=47 S $EC=",U-UNSUPPORTED-SYSTEM,"
- ;
  N I,OUT,FRAG,ASC
  S:'$G(PATH) X=$TR(X,"+"," ") ; don't convert '+' in path fragment
  F I=1:1:$L(X,"%") D
@@ -51,17 +45,7 @@ REFSIZE(ROOT) ; return the size of glvn passed in ROOT
  N SIZE,I
  S SIZE=0
  S ROOT=$NA(@ROOT)
- I $P($SY,",")=47 G REFSIZEGTM
- I $D(@ROOT)#2 S SIZE=$L(@ROOT)
- ; I $D(@ROOT)>1 S I=0 F  S I=$O(@ROOT@(I)) Q:'I  S SIZE=SIZE+$L(@ROOT@(I))
- N ORIG,OL S ORIG=ROOT,OL=$QL(ROOT) ; Orig, Orig Length
- F  S ROOT=$Q(@ROOT) Q:ROOT=""  Q:($NA(@ROOT,OL)'=$NA(@ORIG,OL))  S SIZE=SIZE+$L(@ROOT)
- S ROOT=ORIG
- Q SIZE
- ;
-REFSIZEGTM ; Refsize for GT.M/UTF-8
  I $D(@ROOT)#2 S SIZE=$ZL(@ROOT)
- ; I $D(@ROOT)>1 S I=0 F  S I=$O(@ROOT@(I)) Q:'I  S SIZE=SIZE+$L(@ROOT@(I))
  N ORIG,OL S ORIG=ROOT,OL=$QL(ROOT) ; Orig, Orig Length
  F  S ROOT=$Q(@ROOT) Q:ROOT=""  Q:($NA(@ROOT,OL)'=$NA(@ORIG,OL))  S SIZE=SIZE+$ZL(@ROOT)
  S ROOT=ORIG
@@ -71,12 +55,6 @@ VARSIZE(V) ; return the size of a variable
  Q:'$D(V) 0
  N SIZE,I
  S SIZE=0
- I $P($SY,",")=47 G VARSIZEGTM
- I $D(V)#2 S SIZE=$L(V)
- I $D(V)>1 S I="" F  S I=$O(V(I)) Q:'I  S SIZE=SIZE+$L(V(I))
- Q SIZE
- ;
-VARSIZEGTM ; Varsize for GT.M/UTF-8
  I $D(V)#2 S SIZE=$ZL(V)
  I $D(V)>1 S I="" F  S I=$O(V(I)) Q:'I  S SIZE=SIZE+$ZL(V(I))
  Q SIZE
@@ -130,27 +108,19 @@ customError(ERRCODE,ERRARRAY) ; set custom error into HTTPERR
  ;
 GMT() ; return HTTP date string (this is really using UTC instead of GMT)
  N TM,DAY
- I $$UP($ZV)["CACHE" D  Q $P(DAY," ")_", "_$ZDATETIME(TM,2)_" GMT"
- . S TM=$ZTIMESTAMP,DAY=$ZDATETIME(TM,11)
- ;
  N OUT
- I $$UP($ZV)["GT.M" D  Q OUT
- . N D S D="datetimepipe"
- . N OLDIO S OLDIO=$I
- . O D:(shell="/bin/sh":comm="date -u +'%a, %d %b %Y %H:%M:%S %Z'|sed 's/UTC/GMT/g'")::"pipe"
- . U D R OUT:1 
- . U OLDIO C D
- ;
- QUIT "UNIMPLEMENTED"
- ;
+ N D S D="datetimepipe"
+ N OLDIO S OLDIO=$I
+ O D:(shell="/bin/sh":comm="date -u +'%a, %d %b %Y %H:%M:%S %Z'|sed 's/UTC/GMT/g'")::"pipe"
+ U D R OUT:1 
+ U OLDIO C D
+ Q OUT
  ;
 DEC2HEX(NUM) ; return a decimal number as hex
  Q $$BASE(NUM,10,16)
- ;Q $ZHEX(NUM)
  ;
 HEX2DEC(HEX) ; return a hex number as decimal
  Q $$BASE(HEX,16,10)
- ;Q $ZHEX(HEX_"H")
  ;
 BASE(%X1,%X2,%X3) ;Convert %X1 from %X2 base to %X3 base
  I (%X2<2)!(%X2>16)!(%X3<2)!(%X3>16) Q -1
@@ -264,7 +234,7 @@ UNKARGS(ARGS,LIST) ; returns true if any argument is unknown
  S UNKNOWN=0,LIST=","_LIST_","
  S X="" F  S X=$O(ARGS(X)) Q:X=""  I LIST'[(","_X_",") D
  . S UNKNOWN=1
- . D SETERROR^VPRJRUT(111,X)
+ . D SETERROR(111,X)
  Q UNKNOWN
  ;
 ENCODE64(X) ;
@@ -314,8 +284,7 @@ addService(method,urlPattern,routine,auth,authKey,authOption,params) ; [Public: 
  if $e(urlPattern)="/" s $e(urlPattern)=""
  ;
  ; Lock for edits
- if $P($SY,",")=47 tstart ():serial
- else  lock +^%webutils:1 else  quit:$q 0 q
+ tstart ():serial
  ;
  ; does it already exist; or add new entry
  new ien
@@ -351,8 +320,7 @@ addService(method,urlPattern,routine,auth,authKey,authOption,params) ; [Public: 
  . set ^%web(17.6001,ien,"PARAMS",0)="^17.60012S^"_lastn_"^"_lastn
  ;
  ; Commit our changes and unlock
- if $P($SY,",")=47 tcommit
- else  lock -^%webutils
+ tcommit
  ;
  ; Return IEN
  quit:$quit ien quit
@@ -367,7 +335,7 @@ deleteService(method,urlPattern) ; [Public: Delete Service]
  if $e(urlPattern)="/" s $e(urlPattern)=""
  ;
  new ien
- if $P($SY,",")=47 tstart ():serial
+ tstart ():serial
  if $data(^%web(17.6001,"B",method,urlPattern)) do
  . new routine set routine=$order(^%web(17.6001,"B",method,urlPattern,""))
  . set ien=$order(^%web(17.6001,"B",method,urlPattern,routine,0))
@@ -375,13 +343,13 @@ deleteService(method,urlPattern) ; [Public: Delete Service]
  . kill ^%web(17.6001,ien)
  . set $piece(^%web(17.6001,0),"^",3)=ien
  . set $piece(^%web(17.6001,0),"^",4)=$piece(^%web(17.6001,0),"^",4)-1
- if $P($SY,",")=47 tcommit
+ tcommit
  ;
  quit
  ;
  ; Portions of this code are public domain, but it was extensively modified
- ; Copyright 2013-2019 Sam Habiel
- ; Copyright 2022 YottaDB LLC
+ ; Copyright (c) 2013-2019 Sam Habiel
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.
