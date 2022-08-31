@@ -1,3 +1,16 @@
+#   Copyright (c) 2022 YottaDB LLC
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 FROM yottadb/yottadb-base:latest-master
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -21,7 +34,9 @@ RUN cd munit && \
 
 # Install M-Web-Server
 COPY ./src /mwebserver/r
+
+# Copy Test script
+COPY ci/run_test.sh /mwebserver/run_test.sh
 ENV GTMXC_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.xc"
 ENV ydb_routines "/data/r1.35_x86_64/o*(/mwebserver/r /data/munit/r)"
-RUN . /opt/yottadb/current/ydb_env_set && \
-    mumps -r ^%webtest
+ENTRYPOINT ["/mwebserver/run_test.sh"]
