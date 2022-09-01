@@ -222,12 +222,16 @@ tDC ; @TEST Test Disconnecting from the Server w/o talking
  quit
  ;
 tInt ; @TEST ZInterrupt
+ new oldfile
+ for  set oldfile=$zsearch("YDB_JOBEXAM.ZSHOW_DMP_*") quit:oldfile=""  do
+ . open oldfile:readonly
+ . close oldfile:delete
  open "p":(command="$gtm_dist/mupip intrpt "_myJob)::"pipe"
  use "p" r x:1
  close "p"
  h .1
- d CHKTF^%ut($d(^%webhttp("processlog",$p($h,","))))
- k ^%webhttp("processlog")
+ new newfile set newfile=$zsearch("YDB_JOBEXAM.ZSHOW_DMP_"_myJob_"_1",-1)
+ if newfile'="" do SUCCEED^%ut
  QUIT
  ;
 tLog1 ; @TEST Set HTTPLOG to 1

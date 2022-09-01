@@ -24,13 +24,7 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS,NOGZIP) ; set up listening fo
  ;
  S:'$G(NOGBL) ^%webhttp(0,"listener")="starting"
  ;
- I '$G(NOGBL),$D(^DD) ; This just opens the main mumps.dat file so it can appear in lsof
- ;
  I '$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace"
- ;
- ; $ZINTERRUPT for GT.M/YottaDB
- I $T(JOBEXAM^ZSY)]"" S $ZINT="I $$JOBEXAM^ZSY($ZPOS),$$JOBEXAM^%webreq($ZPOS)"
- E  S $ZINT="I $$JOBEXAM^%webreq($ZPOS)"
  ;
  S TCPPORT=$G(TCPPORT,9080)
  ;
@@ -82,12 +76,6 @@ DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run 
  U $I:(CENABLE:ioerror="T")
  F  W /WAIT(10) I $KEY]"" G CHILDDEBUG
  QUIT
- ;
-JOBEXAM(%ZPOS) ; Interrupt framework for GT.M.
- N S S S=""
- F  S S=$O(^%webhttp("processlog",+$H,S)) Q:'S  K ^(S,$J)  ; **NAKED** ; delete old $ZINTs
- ZSHOW "*":^%webhttp("processlog",+$H,$P($H,",",2),$J)
- QUIT 1
  ;
  ; Child Handling Process ---------------------------------
  ;
