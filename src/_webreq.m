@@ -9,8 +9,7 @@ go ; start up REST listener with defaults
  ;
 job(PORT,TLSCONFIG,NOGBL,USERPASS,NOGZIP) ; Convenience entry point
  I $L($G(USERPASS))&($G(USERPASS)'[":") W "USERPASS argument is invalid, must be in username:password format!" QUIT
- I $P($SY,",")=47 J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS),$G(NOGZIP)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
- E  J start^%webreq(PORT,"",$G(TLSCONFIG),$G(NOGBL),"",$G(USERPASS),$G(NOGZIP)) ; Cache can't accept empty arguments. Change to empty strings.
+ J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS),$G(NOGZIP)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
  QUIT
  ;
 start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS,NOGZIP) ; set up listening for connections
@@ -18,7 +17,10 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS,NOGZIP) ; set up listening fo
  ;
  ; DEBUG is so that we run our server in the foreground.
  ; You can place breakpoints at CHILD+1 or anywhere else.
- ; CTRL-C will always work
+ ;
+ ; Enable CTRL-C
+ WRITE "Starting Server at port "_TCPPORT,!
+ U $p:(ctrap=$char(3):exception="use $p write ""Caught Ctrl-C, stopping..."",! HALT")
  ;
  S:'$G(NOGBL) ^%webhttp(0,"listener")="starting"
  ;
@@ -180,12 +182,6 @@ WAIT ; wait for request on this connection
  . C %WTCP
  ;
  ; -- otherwise get ready for the next request
- ;
- ; Remove DUZ from ST and Logout if we logged into VistA
- I $G(DUZ) D
- . D LOGOUT^XUSRB
- . K DUZ
- ;
  G NEXT
  ;
 RDCRLF() ; read a header line
@@ -281,7 +277,7 @@ INCRLOG ; get unique log id for each request
  E  S ID=99999
  S HTTPLOG("ID")=ID
  Q:'HTTPLOG
- S:'$G(NOGBL) ^%webhttp("log",DT,$J,ID)=$$HTE^%webutils($H)_"  $J:"_$J_"  $P:"_%WTCP_"  $STACK:"_$STACK
+ S:'$G(NOGBL) ^%webhttp("log",DT,$J,ID)=$ZDATE($H,"YYYY-MM-DD 12:60:SS AM")_"  $J:"_$J_"  $P:"_%WTCP_"  $STACK:"_$STACK
  Q
 LOGRAW(X) ; log raw lines read in
  N DT,ID,LN
@@ -325,7 +321,7 @@ LOGDC ; log client disconnection; VEN/SMH
  N DT,ID
  S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
  I $G(NOGBL) QUIT
- S ^%webhttp("log",DT,$J,ID,"disconnect")=$$HTE^%webutils($H)
+ S ^%webhttp("log",DT,$J,ID,"disconnect")=$ZDATE($H,"YYYY-MM-DD 12:60:SS AM")
  QUIT
  ;
 LOGERR ; log error information
@@ -341,8 +337,6 @@ LOGERR ; log error information
  ; Works on GT.M and Cache to capture ST.
  S %Y="%" F  M:$D(@%Y) @(%X_"%Y)="_%Y) S %Y=$O(@%Y) Q:%Y=""
  ZSHOW "D":^%webhttp("log",%D,$J,%I,"error","devices")
- ; If VistA Error Trap exists, log the error there too.
- I $T(+0^%ZTER)'="" D ^%ZTER
  Q
  ;
 stop ; tell the listener to stop running

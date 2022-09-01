@@ -5,19 +5,22 @@
  ;
 URLMAP ;
  ;;GET ping ping^%webapi
- ;;GET /r/{routine?.1""%25"".32AN} R^%webapi
+ ;;GET /r/{routine?.1"%25".32AN} R^%webapi
+ ;;PUT /r/{routine?.1"%25".32AN} PR^%webapi
+ ;;GET /test/error err^%webapi
+ ;;GET test/bigoutput bigoutput^%webapi
+ ;;GET test/gloreturn gloreturn^%webapi
  ;;GET /test/xml xml^%webapi
  ;;GET /test/empty empty^%webapi
  ;;GET test/customerror customerr^%webapi
- ;;GET test/error ERR^%webapi
- ;;POST test/post POSTTEST^%webapi
+ ;;POST test/post posttest^%webapi
  ;;GET test/utf8/get utf8get^%webapi
  ;;POST test/utf8/post utf8post^%webapi
  ;;zzzzz
  ;
- ; Copyright 2019 Christopher Edwards
- ; Copyright 2019 Sam Habiel
- ; Copyright 2022 YottaDB LLC
+ ; Copyright (c) 2019 Christopher Edwards
+ ; Copyright (c) 2019 Sam Habiel
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

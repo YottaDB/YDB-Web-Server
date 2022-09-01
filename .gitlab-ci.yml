@@ -34,4 +34,4 @@ ydb-server-test:
   stage: build
   script:
     - docker build -t mws .
-    - docker run --rm mws
+    - docker run --rm mws test

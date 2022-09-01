@@ -7,14 +7,11 @@ test if $text(^%ut)="" quit
  do cov
  quit
  ;
-STARTUP ; [Adjust the acvc and dfn to suit your environment]
- set acvc="SM1234;SM1234!!"
- set dfn=1
+STARTUP ;
  kill ^%wtrace,^%wcohort,^%wsurv
  VIEW "TRACE":1:"^%wtrace"
  kill ^%webhttp("log")
  kill ^%webhttp(0,"logging")
- do resetURLs
  job start^%webreq(55728,,,,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  set myJob=$zjob
  hang .1
@@ -26,7 +23,7 @@ SHUTDOWN ;
  close "p"
  w !,x,!
  ;
- kill acvc,myJob
+ kill myJob
  ;
  VIEW "TRACE":0:"^%wtrace"
  quit
@@ -52,16 +49,15 @@ tgetr ; @TEST Test Get Handler Routine
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/%25webapi")
  do CHKEQ^%ut(httpStatus,200)
- do CHKTF^%ut(return["divergence in case an index is requested")
+ do CHKTF^%ut(return["YottaDB LLC")
  quit
  ;
 tputr ; @TEST Put a Routine
- i $text(^XUS)="" quit  ; VistA not installed
  n httpStatus,return,headers
  n random s random=$R(9817238947)
  n payload s payload="KBANTESTWEB ;"_random_$C(13,10)_" W ""HELLO WORLD"",!"_$C(13,10)_" QUIT"
  d &libcurl.init
- d &libcurl.auth("Basic",$tr(acvc,";",":"))
+ d &libcurl.auth("Basic",$tr("foo:boo",";",":"))
  d &libcurl.do(.httpStatus,.return,"PUT","http://127.0.0.1:55728/r/KBANTESTWEB",payload,"application/text",1,.headers)
  do CHKEQ^%ut(httpStatus,201)
  d &libcurl.cleanup
@@ -219,73 +215,6 @@ tKillGlo ; @TEST kill global after sending result in it
  do CHKTF^%ut('$d(^web("%webapi")))
  quit
  ;
-trpc1 ; @TEST Run a VistA RPC w/o authentication - should fail
- n httpStatus,return
- i $text(^XUS)="" quit  ; VistA not installed
- n payload s payload="['A','1']"
- n % s %("'")=""""
- s payload=$$REPLACE^XLFSTR(payload,.%)
- d &libcurl.init
- d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/rpc/ORWU%20NEWPERS",payload,"application/json")
- d &libcurl.cleanup
- d CHKEQ^%ut(httpStatus,401)
- quit
- 
-trpc2 ; @TEST Run a VistA RPC (requires authentication - ac/vc provided)
- n httpStatus,return
- i $text(^XUS)="" quit  ; VistA not installed
- n payload s payload="['A','1']"
- n % s %("'")=""""
- s payload=$$REPLACE^XLFSTR(payload,.%)
- d &libcurl.init
- d &libcurl.auth("Basic",$tr(acvc,";",":"))
- d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/rpc/ORWU%20NEWPERS",payload,"application/json")
- d &libcurl.cleanup
- d CHKEQ^%ut(httpStatus,201)
- ; output like: "63^Cprs,User"_$C(13,10)_"1^Manager,System"_$C(13,10)_"137^Pharmacist,Unknown Synthea"_$C(13,10)_".5^Postmaster"_$C(13,10)_"136^Provider,Unknown Synthea"_$C(13,10)
- d CHKTF^%ut(+return)
- d CHKTF^%ut(return[$C(13,10))
- quit
- ;
-trpc3 ; @TEST Run the VPR RPC (XML Version)
- n httpStatus,return
- i $text(^XUS)="" quit  ; VistA not installed
- n payload s payload="[1]"
- d &libcurl.init
- d &libcurl.auth("Basic",$tr(acvc,";",":"))
- d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/rpc/VPR%20GET%20PATIENT%20DATA",payload,"application/json")
- d &libcurl.cleanup
- d CHKEQ^%ut(httpStatus,201)
- d CHKTF^%ut(return["<")
- quit
-trpc4 ; @TEST Run the VPR RPC (JSON Version)
- n httpStatus,return
- i $text(^XUS)="" quit  ; VistA not installed
- n payload s payload="[{'patientId': '"_dfn_"', 'domain': ''}]"
- n % s %("'")=""""
- s payload=$$REPLACE^XLFSTR(payload,.%)
- d &libcurl.init
- d &libcurl.auth("Basic",$tr(acvc,";",":"))
- d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/rpc/VPR%20GET%20PATIENT%20DATA%20JSON",payload,"application/json")
- d &libcurl.cleanup
- d CHKEQ^%ut(httpStatus,201)
- d CHKTF^%ut(return["{")
- quit
- ;
-tParams ; @TEST Test a web service with parameters
- n httpStatus,return
- i $text(^XUS)="" quit  ; VistA not installed
- n payload s payload="start=A&direction=1"
- d &libcurl.init
- d &libcurl.auth("Basic",$tr(acvc,";",":"))
- d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/rpc2/ORWU%20NEWPERS",payload)
- d &libcurl.cleanup
- d CHKEQ^%ut(httpStatus,201)
- ; output like: "63^Cprs,User"_$C(13,10)_"1^Manager,System"_$C(13,10)_"137^Pharmacist,Unknown Synthea"_$C(13,10)_".5^Postmaster"_$C(13,10)_"136^Provider,Unknown Synthea"_$C(13,10)
- d CHKTF^%ut(+return)
- d CHKTF^%ut(return[$C(13,10))
- quit
- ;
 tDC ; @TEST Test Disconnecting from the Server w/o talking
  open "sock":(connect="127.0.0.1:55728:TCP":attach="client"):1:"socket"
  else  D FAIL^%ut("Failed to connect to server") quit
@@ -322,21 +251,12 @@ tLog2 ; @TEST Set HTTPLOG to 2
  quit
  ;
 tLog3 ; @TEST Set HTTPLOG to 3
- i $text(^XUS)="" quit  ; VistA not installed
  S ^%webhttp(0,"logging")=3
  K ^%webhttp("log",+$H)
  n httpStatus,return
- n payload s payload="['A','1']"
- n % s %("'")=""""
- s payload=$$REPLACE^XLFSTR(payload,.%)
- d &libcurl.init
- d &libcurl.auth("Basic",$tr(acvc,";",":"))
- d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/rpc/ORWU%20NEWPERS",payload,"application/json")
- d &libcurl.cleanup
- d CHKEQ^%ut(httpStatus,201)
- ; output like: "63^Cprs,User"_$C(13,10)_"1^Manager,System"_$C(13,10)_"137^Pharmacist,Unknown Synthea"_$C(13,10)_".5^Postmaster"_$C(13,10)_"136^Provider,Unknown Synthea"_$C(13,10)
- d CHKTF^%ut(+return)
- d CHKTF^%ut(return[$C(13,10))
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/%25webapi")
+ do CHKEQ^%ut(httpStatus,200)
+ do CHKTF^%ut(return["YottaDB LLC")
  n s s s=$o(^%webhttp("log",+$h,""))
  d CHKTF^%ut($d(^%webhttp("log",+$h,s,1,"response")))
  quit
@@ -397,19 +317,6 @@ tHomePage ; @Test Getting index.html page
  d CHKEQ^%ut(httpStatus,200)
  d CHKTF^%ut(return[random)
  set ^%webhome=oldDir
- quit
- ;
-tINIT ; @TEST Test Fileman INIT code
- if $text(^DI)="" quit  ; no fileman
- ;
- ; Delete the old DD
- set DIU="^%web(17.6001,",DIU(0)="ES" do EN^DIU2
- do CHKTF^%ut('$data(^DD(17.6001)))
- do CHKTF^%ut('$data(^DD("IX","F",17.6001)))
- ;
- do ^%webINIT
- do CHKTF^%ut($data(^DD(17.6001)))
- do CHKTF^%ut($data(^DD("IX","F",17.6001)))
  quit
  ;
 CORS ; @TEST Make sure CORS headers are returned
@@ -522,11 +429,6 @@ NOGBL ; @TEST Test to make sure no globals are used during webserver operations
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/ping")
  d CHKEQ^%ut(httpStatus,200,"ping failed")
  ;
- ; Make sure ^%web(17.6001) isn't used
- k httpStatus,return
- d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/test/bigoutput")
- do CHKEQ^%ut(httpStatus,404,"bigoutput shouldn't be found")
- ;
  ; now stop the webserver again
  open "p":(command="$gtm_dist/mupip stop "_nogblJob)::"pipe"
  use "p" r x:1
@@ -602,25 +504,6 @@ cov ; [Private: Calculate Coverage]
  k ^%wsurv m ^%wsurv=^%wcohort
  d COVCOV^%ut1($na(^%wsurv),$na(^%wtrace)) ; Venn diagram matching between globals
  d COVRPT^%ut1($na(^%wcohort),$na(^%wsurv),$na(^%wtrace),2)
- quit
- ;
-resetURLs ; Reset all the URLs; Called upon start-up
- d deleteService^%webutils("GET","r/{routine?.1""%25"".32AN}")
- d deleteService^%webutils("PUT","r/{routine?.1""%25"".32AN}")
- d deleteService^%webutils("GET","/test/error")
- d deleteService^%webutils("GET","test/bigoutput")
- d deleteService^%webutils("GET","test/gloreturn")
- d deleteService^%webutils("POST","rpc/{rpc}")
- d deleteService^%webutils("POST","/rpc2/{rpc}")
- ;
- do addService^%webutils("GET","r/{routine?.1""%25"".32AN}","R^%webapi")
- do addService^%webutils("PUT","r/{routine?.1""%25"".32AN}","PR^%webapi",1,"XUPROGMODE")
- do addService^%webutils("GET","/test/error","ERR^%webapi")
- do addService^%webutils("GET","test/bigoutput","bigoutput^%webapi")
- do addService^%webutils("GET","test/gloreturn","gloreturn^%webapi")
- do addService^%webutils("POST","rpc/{rpc}","RPC^%webapi",1)
- n params s params(1)="U^rpc",params(2)="F^start",params(3)="F^direction",params(4)="B"
- n ien s ien=$$addService^%webutils("POST","/rpc2/{rpc}","rpc2^%webapi",1,"","",.params)
  quit
  ;
 XTROU ;

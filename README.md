@@ -59,5 +59,4 @@ To make a new version, see [doc/packaging.md](doc/packaging.md).
 To set-up TLS, see [doc/tls-setup.md](doc/tls-setup.md).
 
 # Testing Documentation
-There are extensive [unit tests](doc/testing.md) covering 80% of
-the code.
+There are extensive [unit tests](doc/testing.md) with coverage.
