@@ -34,7 +34,7 @@ tdebug ; @TEST Debug Entry Point
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55729/")
  do CHKEQ^%ut(httpStatus,200)
- do CHKTF^%ut(return["MUMPS Restful Web-Services Portal")
+ do CHKTF^%ut(return["YottaDB Restful Web-Services Portal")
  ; and it halts on its own
  quit
  ;
@@ -42,7 +42,7 @@ thome ; @TEST Test Home Page
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/")
  do CHKEQ^%ut(httpStatus,200)
- do CHKTF^%ut(return["MUMPS Restful Web-Services Portal")
+ do CHKTF^%ut(return["YottaDB Restful Web-Services Portal")
  quit
  ;
 tgetr ; @TEST Test Get Handler Routine

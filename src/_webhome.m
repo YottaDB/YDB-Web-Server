@@ -1,7 +1,7 @@
 %webhome ; VEN/SMH - Home page processor;Jun 20, 2022@15:59
  ;;
- ; Copyright 2013-2019 Sam Habiel
- ; Copyright 2022 YottaDB LLC
+ ; Copyright (c) 2013-2019 Sam Habiel
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.
@@ -25,37 +25,27 @@ en(RESULT) ; PEP
  I HTTPERR S HTTPERR=0 K RESULT
  ; If we found an index.html don't return the default
  I $D(RESULT) QUIT
- ; If we are in no global mode quit as well as the below loop won't tell us anything
- I $G(NOGBL) S RESULT(1)="NO INDEX FOUND!" QUIT
- ; return default index.html
+ ;
  S RESULT("mime")="text/html; charset=utf-8"
+ ; return default index.html
  N I F I=1:1 S RESULT(I)=$P($TEXT(HTML+I),";;",2,99) Q:RESULT(I)=""  D
  . I RESULT(I)["<%TABLEDATA%>" D
- .. I '$DATA(^%web(17.6001)) SET RESULT(I)="<strong>No web request handlers installed.</strong>"
- .. N IEN S IEN=0 F J=I:.0001 S IEN=$O(^%web(17.6001,IEN)) Q:'IEN  D
+ .. I $T(^%weburl)="" SET RESULT(I)="<strong>No web request handlers installed.</strong>"
+ .. N LINE
+ .. N J S J=I ; Replace "<%TABLEDATA%>"
+ .. F SEQ=1:1 S LINE=$P($T(URLMAP+SEQ^%weburl),";;",2,99) Q:LINE=""  Q:LINE="zzzzz"  D
+ ... N METHOD,URL,RTN,EP
+ ... S METHOD=$P(LINE," ",1)
+ ... S URL=$P(LINE," ",2)
+ ... S EP=$P(LINE," ",3)
+ ... S RTN=$P(EP,"^",2),RTN=$$URLENC^%webutils(RTN)
+ ... ;
  ... S RESULT(J)="<tr>",J=J+.0001
- ... S RESULT(J)="<td>"_^%web(17.6001,IEN,0)_"</td>",J=J+.0001
- ... S RESULT(J)="<td>"_^%web(17.6001,IEN,1)_"</td>",J=J+.0001
- ... ;
- ... N EP S EP=^%web(17.6001,IEN,2) N RTN S RTN=$P(EP,"^",2),RTN=$$URLENC^%webutils(RTN)
+ ... S RESULT(J)="<td>"_METHOD_"</td>",J=J+.0001
+ ... S RESULT(J)="<td>"_URL_"</td>",J=J+.0001
  ... S RESULT(J)="<td><a href=""r/"_RTN_""">"_EP_"</td>",J=J+.0001
- ... ;
- ... N AUTH S AUTH=$P($G(^%web(17.6001,IEN,"AUTH")),"^",1),AUTH=$S(AUTH:"YES",1:"NO")
- ... S RESULT(J)="<td>"_AUTH_"</td>",J=J+.0001
- ... ;
- ... N KEY S KEY=$P($G(^%web(17.6001,IEN,"AUTH")),"^",2) I KEY S KEY=$P($G(^DIC(19.1,KEY,0)),"^")
- ... S RESULT(J)="<td>"_KEY_"</td>",J=J+.0001
- ... ;
- ... N RKEY S RKEY=$P($G(^%web(17.6001,IEN,"AUTH")),"^",3) I RKEY S RKEY=$P($G(^DIC(19.1,RKEY,0)),"^")
- ... S RESULT(J)="<td>"_RKEY_"</td>",J=J+.0001
- ... ;
- ... N OPT S OPT=$P($G(^%web(17.6001,IEN,"AUTH")),"^",4) I OPT S OPT=$P($G(^DIC(19,OPT,0)),"^")
- ... S RESULT(J)="<td>"_OPT_"</td>",J=J+.0001
- ... ;
- ... S RESULT(J)="</tr>"
- . I RESULT(I)="<%FOOTER%>" D
- .. S RESULT(I)="$JOB="_$J_" | $SYSTEM="_$SYSTEM_" | ^DD(""SITE"")="_$G(^DD("SITE"))
- .. S RESULT(I)=RESULT(I)_" | ^DD(""SITE"",1)="_$G(^DD("SITE",1))
+ ... S RESULT(J)="</tr>",J=J+.0001
+ . I RESULT(I)="<%FOOTER%>" S RESULT(I)="$JOB="_$J_" | $SYSTEM="_$SYSTEM
  . S RESULT(I)=RESULT(I)_CRLF
  KILL RESULT(I) ; Kill last one which is empty.
  QUIT
@@ -64,7 +54,7 @@ HTML ; HTML to Write out
  ;;<!doctype html>
  ;;<html>
  ;;<head>
- ;;<title>MUMPS Restful Web-Services Portal</title>
+ ;;<title>YottaDB Restful Web-Services Portal</title>
  ;;<style>
  ;; body {
  ;;     margin: 0 0 0 0;
@@ -119,11 +109,11 @@ HTML ; HTML to Write out
  ;;</head>
  ;;<body>
  ;;<header>
- ;; <span>MUMPS Restful Web-Services Portal</span>
+ ;; <span>YottaDB Restful Web-Services Portal</span>
  ;;</header>
  ;;<main>
  ;;<p>
- ;; Welcome to the MUMPS Advanced Shell Web Services.
+ ;; Welcome to the YottaDB Web Services.
  ;;</p>
  ;;<p>
  ;; Here is a list of web services configured on this server.
@@ -132,12 +122,6 @@ HTML ; HTML to Write out
  ;;   <th>HTTP VERB</th>
  ;;   <th>URI</th>
  ;;   <th>Execution Endpoint</th>
- ;;   <th>Authentication Required?</th>
- ;;   <th>Security Key</th>
- ;;   <th>Reverse Key</th>
- ;;   <th>Access to Option</th> 
- ;;   <th>Example Call</th>
- ;;   <th>Description</th>
  ;;  </tr>
  ;;    <%TABLEDATA%>
  ;; </table>
