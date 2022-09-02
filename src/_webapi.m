@@ -68,7 +68,7 @@ utf8post(params,body,res) ; /test/utf8/post
  quit "test/utf8/post?foo="_params("foo")
  ;
 ping(RESULT,ARGS) ; writes out a ping response
- S RESULT="{""status"":"""_$J_" running""}"
+ S RESULT="{""self"": """_$J_""", ""server"": """_PPID_"""}"
  Q
 xml(RESULT,ARGS) ; text XML
  S HTTPRSP("mime")="text/xml"

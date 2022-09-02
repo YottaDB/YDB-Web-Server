@@ -29,6 +29,8 @@ docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws server
 docker run -v $PWD/src:/mwebserver/r --rm mws tests
 # Run Bash
 docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws bash
+# Run debugger (starts server on 9080, and you need to zstep into)
+docker run --rm -it -p 9080:9080 mws debug
 ```
 
 At the same time, you can modify the source code in the `src` directory and see

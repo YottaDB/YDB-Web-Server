@@ -22,6 +22,9 @@ if [ "$1" = "server" ]; then
 	exec yottadb -r %XCMD 'do start^%webreq(9080)'
 elif [ "$1" = "bash" ] || [ "$1" = "shell" ]; then
 	exec /bin/bash
+elif [ "$1" = "debug" ]; then
+	export ydb_zstep='n oldio s oldio=$io u 0 zp @$zpos b  u oldio'
+	exec yottadb -r %XCMD 'zb start^%webreq do start^%webreq(9080)'
 else # "$1" = "test"
 	yottadb -r ^%webtest | tee test_output.txt
 

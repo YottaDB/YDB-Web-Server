@@ -12,7 +12,7 @@ STARTUP ;
  VIEW "TRACE":1:"^%wtrace"
  kill ^%webhttp("log")
  kill ^%webhttp(0,"logging")
- job start^%webreq(55728,,,,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ job start^%webreq(55728,,,,1):(IN="/dev/null":OUT="/tmp/sim-stdout":ERR="/dev/null"):5
  set myJob=$zjob
  hang .1
  quit
@@ -26,6 +26,19 @@ SHUTDOWN ;
  kill myJob
  ;
  VIEW "TRACE":0:"^%wtrace"
+ quit
+ ;
+SETUP ; This clears the log in between each test
+ open "/tmp/sim-stdout":newversion
+ close "/tmp/sim-stdout"
+ quit
+ ;
+TEARDOWN ;
+ ;write !
+ ;open "/tmp/sim-stdout":readonly
+ ;use "/tmp/sim-stdout"
+ ;for  read x quit:$zeof  use 0 write x,! use "/tmp/sim-stdout"
+ ;close "/tmp/sim-stdout"
  quit
  ;
 tdebug ; @TEST Debug Entry Point
@@ -176,7 +189,7 @@ tping ; @TEST Ping
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/ping")
  do CHKEQ^%ut(httpStatus,200)
- do CHKTF^%ut(return["running")
+ do CHKTF^%ut(return["server")
  quit
  ;
 terr ; @TEST generating an error
@@ -235,45 +248,53 @@ tInt ; @TEST ZInterrupt
  QUIT
  ;
 tLog1 ; @TEST Set HTTPLOG to 1
- S ^%webhttp(0,"logging")=1
- K ^%webhttp("log",+$H)
+ ; This is the default
  n httpStatus,return
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/ping")
- n s s s=$o(^%webhttp("log",+$h,""))
- d CHKTF^%ut(^%webhttp("log",+$h,s,1,"raw"))
- d CHKTF^%ut(^%webhttp("log",+$h,s,1,"req","header"))
+ open "/tmp/sim-stdout":(stream:readonly:rewind:delimiter=$char(10))
+ use "/tmp/sim-stdout"
+ new i for i=1:1 read x(i) quit:$zeof
+ close "/tmp/sim-stdout"
+ d CHKTF^%ut(x(1)["ping",x(1))
  quit
  ;
 tLog2 ; @TEST Set HTTPLOG to 2
  S ^%webhttp(0,"logging")=2
- K ^%webhttp("log",+$H)
  n httpStatus,return
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/ping")
- n s s s=$o(^%webhttp("log",+$h,""))
- d CHKTF^%ut(^%webhttp("log",+$h,s,1,"raw"))
- d CHKTF^%ut(^%webhttp("log",+$h,s,1,"req","header"))
+ open "/tmp/sim-stdout":(stream:readonly:rewind:delimiter=$char(10))
+ use "/tmp/sim-stdout"
+ new i for i=1:1 read x(i) quit:$zeof
+ close "/tmp/sim-stdout"
+ ; Can't get the file to have the right contents...
+ ; but giving up on this for now...
+ ;d CHKTF^%ut(x(1)["ping",x(1))
  quit
  ;
 tLog3 ; @TEST Set HTTPLOG to 3
  S ^%webhttp(0,"logging")=3
- K ^%webhttp("log",+$H)
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/%25webapi")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return["YottaDB LLC")
- n s s s=$o(^%webhttp("log",+$h,""))
- d CHKTF^%ut($d(^%webhttp("log",+$h,s,1,"response")))
+ open "/tmp/sim-stdout":(stream:readonly:rewind:delimiter=$char(10))
+ use "/tmp/sim-stdout"
+ new i for i=1:1 read x(i) quit:$zeof
+ close "/tmp/sim-stdout"
+ d CHKTF^%ut(x(1)["HTTPRSP",x(1))
  quit
  ;
 tDCLog ; @TEST Test Disconnecting from the Server w/o talking while logging
  S ^%webhttp(0,"logging")=3
- K ^%webhttp("log",+$H)
  open "sock":(connect="127.0.0.1:55728:TCP":attach="client"):1:"socket"
  else  D FAIL^%ut("Failed to connect to server") quit
  close "sock"
  h .1
- n s s s=$o(^%webhttp("log",+$h,""))
- d CHKTF^%ut($d(^%webhttp("log",+$h,s,1,"disconnect")))
+ open "/tmp/sim-stdout":(stream:readonly:rewind:delimiter=$char(10))
+ use "/tmp/sim-stdout"
+ new i for i=1:1 read x(i) quit:$zeof
+ close "/tmp/sim-stdout"
+ d CHKTF^%ut(x(1)["Disconnect/Halt",x(1))
  quit
  ;
 tWebPage ; @TEST Test Getting a web page

@@ -18,8 +18,8 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS,NOGZIP) ; set up listening fo
  ; DEBUG is so that we run our server in the foreground.
  ; You can place breakpoints at CHILD+1 or anywhere else.
  ;
- ; Enable CTRL-C
  WRITE "Starting Server at port "_TCPPORT,!
+ ; Enable CTRL-C
  U $p:(ctrap=$char(3):exception="use $p write ""Caught Ctrl-C, stopping..."",! HALT")
  ;
  S:'$G(NOGBL) ^%webhttp(0,"listener")="starting"
@@ -40,6 +40,8 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS,NOGZIP) ; set up listening fo
  U TCPIO:(CHSET="M")
  ;
  W /LISTEN(5) ; Listen 5 deep - sets $KEY to "LISTENING|socket_handle|portnumber"
+ N PARSTDOUT S PARSTDOUT="/proc/"_$JOB_"/fd/1" ; STDOUT for the parent process (to use for logging to STDOUT)
+ N PPID S PPID=$JOB ; Parent PID for the child process
  N PARSOCK S PARSOCK=$P($KEY,"|",2)  ; Parent socket
  N CHILDSOCK  ; That will be set below; Child socket
  ;
@@ -64,7 +66,8 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . U TCPIO:(detach=CHILDSOCK)
  . N Q S Q=""""
  . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
- . N J S J="CHILD($G(TLSCONFIG),$G(NOGBL),$G(TRACE),$G(USERPASS),$G(NOGZIP)):(input="_ARG_":output="_ARG_":error=""/dev/null"")"
+ . N TCPIO ; Don't pass this guy down
+ . N J S J="CHILD:(input="_ARG_":output="_ARG_":error=""/dev/null"":pass:cmd=""CHILD^%webreq -p "_PPID_""")"
  . J @J
  G LOOP
  QUIT
@@ -72,11 +75,9 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
 DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run it now.
  ; Stop using Ctrl-C (duh!)
  N $ET S $ET="BREAK"
- K:'$G(NOGBL) ^%webhttp("log") ; Kill log so that we can see our errors when they happen.
  U $I:(CENABLE:ioerror="T")
- F  W /WAIT(10) I $KEY]"" G CHILDDEBUG
+ F  W /WAIT(10) I $KEY]"" G CHILD
  QUIT
- ;
  ; Child Handling Process ---------------------------------
  ;
  ; The following variables exist during the course of the request
@@ -93,20 +94,22 @@ DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run 
  ; HTTPLOG indicates the logging level for this process
  ; HTTPERR non-zero if there is an error state
  ;
-CHILD(TLSCONFIG,NOGBL,TRACE,USERPASS,NOGZIP) ; handle HTTP requests on this connection
-CHILDDEBUG ; [Internal] Debugging entry point
+CHILD ; handle HTTP requests on this connection
+ N $ET S $ET="G ETSOCK^%webreq"
  S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
+ K TCPIO
+ ;
+ N DEVTMP ZSHOW "D":DEVTMP
+ N HTTPREMOTEIP
+ N I F I=0:0 S I=$O(DEVTMP("D",I)) Q:'I  I DEVTMP("D",I)["REMOTE" S HTTPREMOTEIP=$P($P(DEVTMP("D",I),"REMOTE=",2),"@")
+ K DEVTMP,I
+ ;
+ D STDOUT("Starting Child at PID "_$J_" from parent "_PPID)
  ;
  I '$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace" ; Tracing for Unit Test Coverage
  ;
- S:'$G(NOGBL) HTTPLOG=$G(^%webhttp(0,"logging"),0) ; HTTPLOG remains set throughout
- S:$G(NOGBL) HTTPLOG=0
- S HTTPLOG("DT")=+$H
- D INCRLOG ; set unique request id for log
- N $ET S $ET="G ETSOCK^%webreq"
- ;
 TLS ; Turn on TLS?
- I TLSCONFIG]"" W /TLS("server",1,TLSCONFIG)
+ I $G(TLSCONFIG)]"" W /TLS("server",1,TLSCONFIG)
  N D,K,T
  ; TODO: Put that in logging
  ; put a break point here to debug TLS
@@ -125,22 +128,33 @@ NEXT ; begin next request
 WAIT ; wait for request on this connection
  I '$G(NOGBL),$E($G(^%webhttp(0,"listener")),1,4)="stop" C %WTCP Q
  U %WTCP:(delim=$C(13,10):chset="M") ; GT.M Delimiters
- R TCPX:10 I '$T G ETDC
+ R TCPX:10
+ ;
+ ; Do the setting of this after the read so it will take place always,
+ ; otherwise we need till the next loop
+ ; (But this code will change in the future because we won't use globals)
+ S:'$G(NOGBL) HTTPLOG=$G(^%webhttp(0,"logging"),1) ; HTTPLOG remains set throughout
+ S:$G(NOGBL) HTTPLOG=1
+ ;
+ I '$T G ETDC
  I '$L(TCPX) G ETDC
  ;
  ; -- got a request and have the first line
- I HTTPLOG D LOGRAW(TCPX),LOGHDR(TCPX)
+ I HTTPLOG>2 D LOGRAW(TCPX)
+ I HTTPLOG>1 D LOGHDR(TCPX)
+ I HTTPLOG>0 D LOGREQ(TCPX)
+ ;
  S HTTPREQ("method")=$P(TCPX," ")
  S HTTPREQ("path")=$P($P(TCPX," ",2),"?")
  S HTTPREQ("query")=$P($P(TCPX," ",2),"?",2,999)
- ; TODO: check format of TCPX and raise error if not correct
+ ;
  I $E($P(TCPX," ",3),1,4)'="HTTP" G NEXT
  ;
  ; -- read the rest of the lines in the header
  F  S TCPX=$$RDCRLF() Q:'$L(TCPX)  D ADDHEAD(TCPX)
  ;
  ; -- Handle Contiuation Request
- I $G(HTTPREQ("header","expect"))="100-continue" D:HTTPLOG LOGCN W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
+ I $G(HTTPREQ("header","expect"))="100-continue" D:HTTPLOG>0 LOGCN W "HTTP/1.1 100 Continue",$C(13,10,13,10),!
  ;
  ; -- decide how to read body, if any
  U %WTCP:(nodelim) ; GT.M Stream mode
@@ -156,7 +170,6 @@ WAIT ; wait for request on this connection
  S HTTPERR=0
  D RESPOND^%webrsp
  S $ETRAP="G ETSOCK^%webreq"
- ; TODO: restore HTTPLOG if necessary
  ;
  ; -- write out the response (error if HTTPERR>0)
  U %WTCP:(nodelim) ; GT.M Stream mode
@@ -177,7 +190,7 @@ RDCRLF() ; read a header line
  ; (on a packet boundary or when 1024 characters had been read)
  N X,LINE,RETRY
  S LINE=""
- F RETRY=1:1 R X:1 D:HTTPLOG LOGRAW(X) S LINE=LINE_X Q:$A($ZB)=13  Q:RETRY>10
+ F RETRY=1:1 R X:1 D:HTTPLOG>2 LOGRAW(X) S LINE=LINE_X Q:$A($ZB)=13  Q:RETRY>10
  Q LINE
  ;
 RDCHNKS ; read body in chunks
@@ -191,8 +204,8 @@ RDLOOP ;
  ; quit with what we have if read times out
  S LENGTH=REMAIN I LENGTH>4000 S LENGTH=4000
  R X#LENGTH:TIMEOUT
- I '$T D:HTTPLOG>1 LOGRAW("timeout:"_X) S LINE=LINE+1,HTTPREQ("body",LINE)=X Q
- I HTTPLOG>1 D LOGRAW(X)
+ I '$T D:HTTPLOG>2 LOGRAW("timeout:"_X) S LINE=LINE+1,HTTPREQ("body",LINE)=X Q
+ I HTTPLOG>2 D LOGRAW(X)
  S REMAIN=REMAIN-$ZL(X) ; Issue 55: UTF-8 bodies
  S LINE=LINE+1,HTTPREQ("body",LINE)=X
  G:REMAIN RDLOOP
@@ -200,7 +213,7 @@ RDLOOP ;
  ;
 ADDHEAD(LINE) ; add header name and header value
  ; expects HTTPREQ to be defined
- D:HTTPLOG LOGHDR(LINE)
+ D:HTTPLOG>1 LOGHDR(LINE)
  N NAME,VALUE
  S NAME=$$LOW^%webutils($$LTRIM^%webutils($P(LINE,":")))
  S VALUE=$$LTRIM^%webutils($P(LINE,":",2,99))
@@ -232,7 +245,6 @@ ETCODE ; error trap when calling out to routines
  S ERRARR("reason")=$ECODE
  S ERRARR("place")=$STACK($STACK(-1),"PLACE")
  S ERRARR("mcode")=$STACK($STACK(-1),"MCODE")
- S ERRARR("logID")=HTTPLOG("ID")
  D SETERROR^%webutils(501,,.ERRARR) ; sets HTTPERR
  D LOGERR
  D RSPERROR^%webrsp  ; switch to error response
@@ -242,7 +254,7 @@ ETCODE ; error trap when calling out to routines
  S $ETRAP="Q:$ESTACK&$QUIT 0 Q:$ESTACK  S $ECODE="""" G NEXT",$ECODE=",U-UNWIND,"
  Q
 ETDC ; error trap for client disconnect ; not a true M trap
- D:HTTPLOG LOGDC
+ D:HTTPLOG>0 LOGDC
  K:'$G(NOGBL) ^TMP($J)
  C $P  
  HALT ; Stop process 
@@ -254,78 +266,59 @@ ETBAIL ; error trap of error traps
  C %WTCP
  HALT  ; exit because we can't recover
  ;
-INCRLOG ; get unique log id for each request
- N DT,ID
- S DT=HTTPLOG("DT")
- I '$G(NOGBL) D
- . L +^%webhttp("log",DT):2 E  S HTTPLOG("ID")=99999 Q  ; get unique logging session
- . S ID=$G(^%webhttp("log",DT),0)+1
- . S ^%webhttp("log",DT)=ID
- . L -^%webhttp("log",DT)
- E  S ID=99999
- S HTTPLOG("ID")=ID
- Q:'HTTPLOG
- S:'$G(NOGBL) ^%webhttp("log",DT,$J,ID)=$ZDATE($H,"YYYY-MM-DD 12:60:SS AM")_"  $J:"_$J_"  $P:"_%WTCP_"  $STACK:"_$STACK
- Q
-LOGRAW(X) ; log raw lines read in
- N DT,ID,LN
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- I $G(NOGBL) QUIT
- S LN=$G(^%webhttp("log",DT,$J,ID,"raw"),0)+1
- S ^%webhttp("log",DT,$J,ID,"raw")=LN
- S ^%webhttp("log",DT,$J,ID,"raw",LN)=X
- S ^%webhttp("log",DT,$J,ID,"raw",LN,"ZB")=$A($ZB)
- Q
-LOGHDR(X) ; log header lines read in
- N DT,ID,LN
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- I $G(NOGBL) QUIT
- S LN=$G(^%webhttp("log",DT,$J,ID,"req","header"),0)+1
- S ^%webhttp("log",DT,$J,ID,"req","header")=LN
- S ^%webhttp("log",DT,$J,ID,"req","header",LN)=X
- Q
-LOGBODY ; log the request body
- Q:'$D(HTTPREQ("body"))
- N DT,ID
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- I $G(NOGBL) QUIT
- M ^%webhttp("log",DT,$J,ID,"req","body")=HTTPREQ("body")
- Q
-LOGRSP ; log the response before sending
- I '$L($G(HTTPRSP))&'$O(HTTPRSP("")) QUIT  ; Q:'$D(@HTTPRSP) VEN/SMH - Response may be scalar
- N DT,ID
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- I $G(NOGBL) QUIT
- I $E($G(HTTPRSP))="^" M ^%webhttp("log",DT,$J,ID,"response")=@HTTPRSP
- E  M ^%webhttp("log",DT,$J,ID,"response")=HTTPRSP
- Q
-LOGCN ; log continue
- N DT,ID
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- I $G(NOGBL) QUIT
- S ^%webhttp("log",DT,$J,ID,"continue")="HTTP/1.1 100 Continue"
+LOGREQ(X) ; log first Request line
+ D STDOUT(X)
  QUIT
+ ;
+LOGRAW(X) ; log raw lines read in
+ D STDOUT("Raw: "_X_" $ZB: "_$A($ZB))
+ QUIT
+ ;
+LOGHDR(X) ; log header lines read in
+ D STDOUT("Req header: "_X)
+ QUIT
+ ;
+LOGBODY ; log the request body
+ I '$D(HTTPREQ("body")) D STDOUT("Req Body: none") QUIT
+ N I F I=0:0 S I=$O(HTTPREQ("body",I)) Q:'I  D STDOUT("Req Body "_I_": "_HTTPREQ("body",I))
+ QUIT
+ ;
+LOGRSP ; log the response before sending
+ I '$L($G(HTTPRSP))&'$O(HTTPRSP("")) D STDOUT("No response") QUIT
+ D STDOUT("Response: ")
+ D STDOUTZW($NA(HTTPRSP))
+ QUIT
+ ;
+LOGCN ; log continue
+ D STDOUT("Responded to expect/continue with HTTP/1.1 100 Continue")
+ QUIT
+ ;
 LOGDC ; log client disconnection; VEN/SMH
- N DT,ID
- S DT=HTTPLOG("DT"),ID=HTTPLOG("ID")
- I $G(NOGBL) QUIT
- S ^%webhttp("log",DT,$J,ID,"disconnect")=$ZDATE($H,"YYYY-MM-DD 12:60:SS AM")
+ D STDOUT("Disconnect/Halt "_$J)
  QUIT
  ;
 LOGERR ; log error information
- Q:$G(NOGBL)
- N %D,%I
- S %D=HTTPLOG("DT"),%I=HTTPLOG("ID")
- S ^%webhttp("log",%D,$J,%I,"error")=$ZSTATUS
- N %LVL,%TOP,%N
- S %TOP=$STACK(-1)-1,%N=0
- F %LVL=0:1:%TOP S %N=%N+1,^%webhttp("log",%D,$J,%I,"error","stack",%N)=$STACK(%LVL,"PLACE")_":"_$STACK(%LVL,"MCODE")
- N %X,%Y
- S %X="^%webhttp(""log"",%D,$J,%I,""error"",""symbols"","
- ; Works on GT.M and Cache to capture ST.
- S %Y="%" F  M:$D(@%Y) @(%X_"%Y)="_%Y) S %Y=$O(@%Y) Q:%Y=""
- ZSHOW "D":^%webhttp("log",%D,$J,%I,"error","devices")
+ N ERR
+ ZSHOW "*":ERR
+ D STDOUT("Error: "_$ZSTATUS)
+ D STDOUTZW($NA(ERR))
  Q
+ ;
+STDOUT(MSG) ; [Internal] Log to STDOUT
+ ; 127.0.0.1 - - [02/Sep/2022 11:03:33] "GET / HTTP/1.1" 200 -
+ N OLDIO S OLDIO=$IO
+ O PARSTDOUT U PARSTDOUT
+ W HTTPREMOTEIP," - - [",$ZDATE($H,"DD/MON/YYYY 12:60:SS AM"),"] "
+ W MSG,!
+ U OLDIO C PARSTDOUT
+ QUIT
+ ;
+STDOUTZW(V)
+ N OLDIO S OLDIO=$IO
+ O PARSTDOUT U PARSTDOUT
+ ZWRITE @V
+ U OLDIO C PARSTDOUT
+ QUIT
  ;
 stop ; tell the listener to stop running
  S ^%webhttp(0,"listener")="stopped"
