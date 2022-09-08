@@ -2,11 +2,9 @@
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
- S RESULT=$NA(^TMP($J))
- K @RESULT
  N RTN S RTN=$G(ARGS("routine"))
  N OFF,I
- I RTN]""&($T(^@RTN)]"") F I=1:1 S OFF="+"_I,LN0=OFF_"^"_RTN,LN=$T(@LN0) Q:LN=""  S @RESULT@(I)=LN_$C(13,10)
+ I RTN]""&($T(^@RTN)]"") F I=1:1 S OFF="+"_I,LN0=OFF_"^"_RTN,LN=$T(@LN0) Q:LN=""  S RESULT(I)=LN_$C(13,10)
  E  K RESULT("mime") D setError^%webutils(404,"Routine not found")
  QUIT
  ;
@@ -72,14 +70,13 @@ ping(RESULT,ARGS) ; writes out a ping response
  Q
 xml(RESULT,ARGS) ; text XML
  S HTTPRSP("mime")="text/xml"
- S RESULT=$NA(^TMP($J))
- S ^TMP($J,1)="<?xml version=""1.0"" encoding=""UTF-8""?>"
- S ^TMP($J,2)="<note>"
- S ^TMP($J,3)="<to>Tovaniannnn</to>"
- S ^TMP($J,4)="<from>Jani</from>"
- S ^TMP($J,5)="<heading>Reminders</heading>"
- S ^TMP($J,6)="<body>Don't forget me this weekend!</body>"
- S ^TMP($J,7)="</note>"
+ S RESULT(1)="<?xml version=""1.0"" encoding=""UTF-8""?>"
+ S RESULT(2)="<note>"
+ S RESULT(3)="<to>Tovaniannnn</to>"
+ S RESULT(4)="<from>Jani</from>"
+ S RESULT(5)="<heading>Reminders</heading>"
+ S RESULT(6)="<body>Don't forget me this weekend!</body>"
+ S RESULT(7)="</note>"
  QUIT
  ;
 customerr(r,a) ; custom error
@@ -107,9 +104,6 @@ posttest(ARGS,BODY,RESULT) ; Simple test for post, handles /test/post
 FILESYS(RESULT,ARGS) ; Handle filesystem/*
  I '$D(ARGS)&$D(PATHSEG) S ARGS("*")=PATHSEG
  N PATH
- ;
- ; Where is our home? If any home!
- I '$G(NOGBL),$G(^%webhome)'="" S $ZD=^%webhome
  ;
  ; Ok, get the actual path
  S PATH=$ZDIRECTORY_ARGS("*")

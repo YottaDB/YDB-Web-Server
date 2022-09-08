@@ -3,16 +3,15 @@
  ; Listener Process ---------------------------------------
  ;
 go ; start up REST listener with defaults
- N PORT S PORT=$G(^%webhttp(0,"port"),9080)
- D job(PORT)
+ D job(9080)
  QUIT
  ;
-job(PORT,TLSCONFIG,NOGBL,USERPASS,NOGZIP) ; Convenience entry point
+job(PORT,TLSCONFIG,HTTPLOG,USERPASS,NOGZIP) ; Convenience entry point
  I $L($G(USERPASS))&($G(USERPASS)'[":") W "USERPASS argument is invalid, must be in username:password format!" QUIT
- J start^%webreq(PORT,,$G(TLSCONFIG),$G(NOGBL),,$G(USERPASS),$G(NOGZIP)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
+ J start^%webreq(PORT,,$G(TLSCONFIG),$G(HTTPLOG),,$G(USERPASS),$G(NOGZIP)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
  QUIT
  ;
-start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS,NOGZIP) ; set up listening for connections
+start(TCPPORT,DEBUG,TLSCONFIG,HTTPLOG,USERPASS,NOGZIP) ; set up listening for connections
  ; I hope TCPPORT needs no explanations.
  ;
  ; DEBUG is so that we run our server in the foreground.
@@ -22,20 +21,19 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS,NOGZIP) ; set up listening fo
  ; Enable CTRL-C
  U $p:(ctrap=$char(3):exception="use $p write ""Caught Ctrl-C, stopping..."",! HALT")
  ;
- S:'$G(NOGBL) ^%webhttp(0,"listener")="starting"
- ;
- I '$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace"
- ;
+ ; Initialize the variables
  S TCPPORT=$G(TCPPORT,9080)
+ S DEBUG=$G(DEBUG,0)
+ S TLSCONFIG=$G(TLSCONFIG)
+ S HTTPLOG=$G(HTTPLOG,1)
+ S USERPASS=$G(USERPASS)
+ S NOGZIP=$G(NOGZIP,0)
  ;
  ; Device ID
  S TCPIO="SCK$"_TCPPORT
  ;
  ; Open Code
  O TCPIO:(LISTEN=TCPPORT_":TCP":delim=$C(13,10):attach="server"):15:"socket" E  U 0 W !,"error cannot open port "_TCPPORT Q
- ;
- ; K. Now we are really really listening.
- S:'$G(NOGBL) ^%webhttp(0,"listener")="running"
  ;
  U TCPIO:(CHSET="M")
  ;
@@ -45,21 +43,16 @@ start(TCPPORT,DEBUG,TLSCONFIG,NOGBL,TRACE,USERPASS,NOGZIP) ; set up listening fo
  N PARSOCK S PARSOCK=$P($KEY,"|",2)  ; Parent socket
  N CHILDSOCK  ; That will be set below; Child socket
  ;
- I $G(DEBUG) D DEBUG($G(TLSCONFIG))
+ I DEBUG D DEBUG(TLSCONFIG)
  ;
 LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
- I ('$G(NOGBL)),$E(^%webhttp(0,"listener"),1,4)="stop" C TCPIO S ^%webhttp(0,"listener")="stopped" Q
- ;
  ; ----- GT.M CODE ----
  ; In GT.M $KEY is "CONNECT|socket_handle|portnumber" then "READ|socket_handle|portnumber"
  ;
  ; Wait until we have a connection (inifinte wait). 
  ; Stop if the listener asked us to stop.
- FOR  W /WAIT(10) Q:$KEY]""  Q:$G(NOGBL)  Q:($E(^%webhttp(0,"listener"),1,4)="stop")
+ FOR  W /WAIT(10) Q:$KEY]""
  ;
- ; We have to stop! When we quit, we go to loop, and we exit at LOOP+1
- I '$G(NOGBL),$E(^%webhttp(0,"listener"),1,4)="stop" QUIT
- ; 
  ; At connection, job off the new child socket to be served away.
  I $P($KEY,"|")="CONNECT" D  ; >=6.1
  . S CHILDSOCK=$P($KEY,"|",2)
@@ -104,12 +97,10 @@ CHILD ; handle HTTP requests on this connection
  N I F I=0:0 S I=$O(DEVTMP("D",I)) Q:'I  I DEVTMP("D",I)["REMOTE" S HTTPREMOTEIP=$P($P(DEVTMP("D",I),"REMOTE=",2),"@")
  K DEVTMP,I
  ;
- D STDOUT("Starting Child at PID "_$J_" from parent "_PPID)
- ;
- I '$G(NOGBL),$G(TRACE) VIEW "TRACE":1:"^%wtrace" ; Tracing for Unit Test Coverage
+ I HTTPLOG>0 D STDOUT("Starting Child at PID "_$J_" from parent "_PPID)
  ;
 TLS ; Turn on TLS?
- I $G(TLSCONFIG)]"" W /TLS("server",1,TLSCONFIG)
+ I TLSCONFIG]"" W /TLS("server",1,TLSCONFIG)
  N D,K,T
  ; TODO: Put that in logging
  ; put a break point here to debug TLS
@@ -123,19 +114,10 @@ TLS ; Turn on TLS?
  ;
 NEXT ; begin next request
  K HTTPREQ,HTTPRSP,HTTPERR
- K:'$G(NOGBL) ^TMP($J)
  ;
 WAIT ; wait for request on this connection
- I '$G(NOGBL),$E($G(^%webhttp(0,"listener")),1,4)="stop" C %WTCP Q
  U %WTCP:(delim=$C(13,10):chset="M") ; GT.M Delimiters
  R TCPX:10
- ;
- ; Do the setting of this after the read so it will take place always,
- ; otherwise we need till the next loop
- ; (But this code will change in the future because we won't use globals)
- S:'$G(NOGBL) HTTPLOG=$G(^%webhttp(0,"logging"),1) ; HTTPLOG remains set throughout
- S:$G(NOGBL) HTTPLOG=1
- ;
  I '$T G ETDC
  I '$L(TCPX) G ETDC
  ;
@@ -177,10 +159,8 @@ WAIT ; wait for request on this connection
  I HTTPLOG>2 D LOGRSP
  D SENDATA^%webrsp
  ;
- ; -- exit on Connection: Close (or if tracing is on so that we can get our trace results)
- I $$LOW^%webutils($G(HTTPREQ("header","connection")))="close"!$G(TRACE) D  HALT
- . K:'$G(NOGBL) ^TMP($J)
- . C %WTCP
+ ; -- exit on Connection: Close
+ I $$LOW^%webutils($G(HTTPREQ("header","connection")))="close" C %WTCP HALT
  ;
  ; -- otherwise get ready for the next request
  G NEXT
@@ -255,14 +235,12 @@ ETCODE ; error trap when calling out to routines
  Q
 ETDC ; error trap for client disconnect ; not a true M trap
  D:HTTPLOG>0 LOGDC
- K:'$G(NOGBL) ^TMP($J)
  C $P  
  HALT ; Stop process 
  ;
 ETBAIL ; error trap of error traps
  U %WTCP
  W "HTTP/1.1 500 Internal Server Error",$C(13,10),$C(13,10),!
- K:'$G(NOGBL) ^TMP($J)
  C %WTCP
  HALT  ; exit because we can't recover
  ;
@@ -321,7 +299,7 @@ STDOUTZW(V)
  QUIT
  ;
 stop ; tell the listener to stop running
- S ^%webhttp(0,"listener")="stopped"
+ ; To be implemented
  Q
  ;
  ; Portions of this code are public domain, but it was extensively modified

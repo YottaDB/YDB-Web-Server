@@ -15,18 +15,16 @@
 
 set -e
 set -o pipefail
-# TODO: Remove this when we remove the use of globals completely
-. /opt/yottadb/current/ydb_env_set 
 
 if [ "$1" = "server" ]; then
-	exec yottadb -r %XCMD 'do start^%webreq(9080)'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%webreq(9080)'
 elif [ "$1" = "bash" ] || [ "$1" = "shell" ]; then
 	exec /bin/bash
 elif [ "$1" = "debug" ]; then
 	export ydb_zstep='n oldio s oldio=$io u 0 zp @$zpos b  u oldio'
-	exec yottadb -r %XCMD 'zb start^%webreq do start^%webreq(9080)'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'zb start^%webreq do start^%webreq(9080)'
 else # "$1" = "test"
-	yottadb -r ^%webtest | tee test_output.txt
+	/opt/yottadb/current/yottadb -r ^%webtest | tee test_output.txt
 
 	set +e # grep will have status of 1 if no lines are found, and that will exit the script!
 	grep -B1 -F '[FAIL]' test_output.txt

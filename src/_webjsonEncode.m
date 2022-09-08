@@ -12,7 +12,7 @@ DIRECT ; TAG for use by encode^%webjson
  ; VVJSON: destination variable for the string array formatted as JSON
  ;  VVERR: contains error messages, defaults to ^TMP("%webjsonerr",$J)
  ;
- S VVERR=$G(VVERR,"^TMP(""%webjsonerr"",$J)")
+ S VVERR=$G(VVERR,"%webjsonerr")
  I '$L($G(VVROOT)) ; set error info
  I '$L($G(VVJSON)) ; set error info
  N VVLINE,VVMAX,VVSUB,VVERRORS
@@ -152,6 +152,7 @@ ERRX(ID,VAL) ; Set the appropriate error message
  ; Copyright 2016 Accenture Federal Services
  ; Copyright 2013-2019 Sam Habiel
  ; Copyright 2019 Christopher Edwards
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

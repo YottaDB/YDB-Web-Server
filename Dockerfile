@@ -24,18 +24,9 @@ RUN cd fis-gtm-plugins/libcurl && \
     . /opt/yottadb/current/ydb_env_set && \
     make install
 
-# Install M-Unit
-RUN git clone https://github.com/ChristopherEdwards/M-Unit.git munit
-RUN cd munit && \
-    mkdir r && \
-    cd Routines && \
-    for file in _*.m; do mv $file /data/munit/r/; done
-RUN cd /data/r1.35_x86_64/o && \
-    . /opt/yottadb/current/ydb_env_set && \
-    for file in /data/munit/r/_*.m; do /opt/yottadb/current/yottadb -nowarning $file; done
-
-ENV GTMXC_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.xc"
-ENV ydb_routines "/data/r1.35_x86_64/o*(/mwebserver/r /data/munit/r)"
+ENV ydb_xc_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.xc"
+ENV ydb_routines "/data/r1.35_x86_64/o*(/mwebserver/r) /opt/yottadb/current/utf8/libyottadbutil.so"
+ENV ydb_icu_version "66"
 EXPOSE 9080
 
 # Copy Test script

@@ -5,7 +5,6 @@
 RESPOND ; find entry point to handle request and call it
  ; expects HTTPREQ, HTTPRSP is used to return the response
  ;
- K:'$G(NOGBL) ^TMP($J)
  N ROUTINE,LOCATION,HTTPARGS,HTTPBODY
  I HTTPREQ("path")="/",HTTPREQ("method")="GET" D en^%webhome(.HTTPRSP) QUIT  ; Home page requested.
  I HTTPREQ("method")="OPTIONS" S HTTPRSP="OPTIONS,POST" QUIT ; Always repond to OPTIONS to give CORS header info
@@ -147,7 +146,7 @@ SENDATA ; write out the data as an HTTP response
  I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Max-Age: 86400"_$C(13,10))
  D W("Access-Control-Allow-Origin: *"_$C(13,10))
  ;
- I '$G(NOGZIP),$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
+ I 'NOGZIP,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
  ;
  D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
  I 'SIZE!(HTTPREQ("method")="HEAD") D FLUSH Q  ; flush buffer and quit if empty
@@ -158,7 +157,6 @@ SENDATA ; write out the data as an HTTP response
  . I $D(HTTPRSP)>1 S I=0 F  S I=$O(HTTPRSP(I)) Q:'I  D W(HTTPRSP(I))
  I RSPTYPE=2 D            ; write out global using indirection
  . I $D(@HTTPRSP)#2 D W(@HTTPRSP)
- . ; I $D(@HTTPRSP)>1 S I=0 F  S I=$O(@HTTPRSP@(I)) Q:'I  D W(@HTTPRSP@(I))
  . I $D(@HTTPRSP)>1 D
  . . N ORIG,OL S ORIG=HTTPRSP,OL=$QL(HTTPRSP) ; Orig, Orig Length
  . . N HTTPEXIT S HTTPEXIT=0
@@ -167,10 +165,9 @@ SENDATA ; write out the data as an HTTP response
  . . . D:$G(HTTPRSP)'="" W(@HTTPRSP)
  . . . I $G(HTTPRSP)="" S HTTPEXIT=1
  . . . E  I $G(@HTTPRSP),$G(@ORIG),$NA(@HTTPRSP,OL)'=$NA(@ORIG,OL) S HTTPEXIT=1
- . . ; End ~ vertical rewrite
  . . S HTTPRSP=ORIG
- . ; Kill global after sending. https://github.com/shabiel/M-Web-Server/issues/44
- . I HTTPRSP'["^XTMP(" K @HTTPRSP
+ . . ; Kill global after sending. https://github.com/shabiel/M-Web-Server/issues/44
+ . . K @HTTPRSP
  D FLUSH ; flush buffer
  Q
  ;

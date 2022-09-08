@@ -20,7 +20,7 @@ DIRECT ; TAG for use by DECODE^%webjson
  ; With the change to VVMAX, the following Unit Tests required changes:
  ; SPLITA^%webjsonDecodeTest, SPLITB^%webjsonDecodeTest, LONG^%webjsonDecodeTest, MAXNUM^%webjsonDecodeTest
  N VVMAX S VVMAX=100 ; limit document lines to 100 characters
- S VVERR=$G(VVERR,"^TMP(""%webjsonerr"",$J)")
+ S VVERR=$G(VVERR,"%webjsonerr")
  ; If a simple string is passed in, move it to an temp array (VVINPUT)
  ; so that the processing is consistently on an array.
  I $D(@VVJSON)=1 N VVINPUT S VVINPUT(1)=@VVJSON,VVJSON="VVINPUT"
@@ -257,6 +257,7 @@ ERRX(ID,VAL) ; Set the appropriate error message
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright 2016 Accenture Federal Services
  ; Copyright 2013-2019 Sam Habiel
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

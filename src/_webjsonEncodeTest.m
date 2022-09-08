@@ -1,13 +1,10 @@
 %webjsonEncodeTest ;SLC/KCM -- Unit tests for JSON encoding;2019-11-14  9:08 AM
- ;
  D EN^%ut($T(+0),3)
  quit
  ;
 STARTUP  ; Run once before all tests
- if $p($sy,",")=47 VIEW "TRACE":1:"^%wtrace"
  Q
 SHUTDOWN ; Run once after all tests
- if $p($sy,",")=47 VIEW "TRACE":0:"^%wtrace"
  Q
 SETUP    ; Run before each test
  Q
@@ -209,6 +206,7 @@ TARGET(ID,OFFSET) ; values to test against
  ; Copyright 2016 Accenture Federal Services
  ; Copyright 2013-2019 Sam Habiel
  ; Copyright 2019 Christopher Edwards
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.
