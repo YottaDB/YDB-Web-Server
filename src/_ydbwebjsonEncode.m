@@ -1,18 +1,18 @@
-%webjsonEncode ;SLC/KCM -- Encode JSON;2019-11-14  9:06 AM
+%ydbwebjsonEncode ;SLC/KCM -- Encode JSON;2019-11-14  9:06 AM
  ;
 encode(VVROOT,VVJSON,VVERR) G DIRECT
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
  ;
-DIRECT ; TAG for use by encode^%webjson
+DIRECT ; TAG for use by encode^%ydbwebjson
  ;
- ; Examples:  D encode^%webjson("^GLO(99,2)","^TMP($J)")
- ;            D encode^%webjson("LOCALVAR","MYJSON","LOCALERR")
+ ; Examples:  D encode^%ydbwebjson("^GLO(99,2)","^TMP($J)")
+ ;            D encode^%ydbwebjson("LOCALVAR","MYJSON","LOCALERR")
  ;
  ; VVROOT: closed array reference for M representation of object
  ; VVJSON: destination variable for the string array formatted as JSON
- ;  VVERR: contains error messages, defaults to ^TMP("%webjsonerr",$J)
+ ;  VVERR: contains error messages, defaults to ^TMP("%ydbwebjsonerr",$J)
  ;
- S VVERR=$G(VVERR,"%webjsonerr")
+ S VVERR=$G(VVERR,"%ydbwebjsonerr")
  I '$L($G(VVROOT)) ; set error info
  I '$L($G(VVJSON)) ; set error info
  N VVLINE,VVMAX,VVSUB,VVERRORS
@@ -22,9 +22,9 @@ DIRECT ; TAG for use by encode^%webjson
  ; memory, which required a switch to globals to fix. However, 4000 as a
  ; limit slowed the encoder down quite a bit, when using globals.
  ; With the change to VVMAX, the following Unit Tests required changes:
- ; PURENUM^%webjsonDecodeTest,
- ; ESTRING^%webjsonDecodeTest, BASIC^%webjsonEncodeTest, VALS^%webjsonEncodeTest, LONG^%webjsonEncodeTest,
- ; PRE^%webjsonEncodeTest, WP^%webjsonEncodeTest, EXAMPLE^%webjsonEncodeTest
+ ; PURENUM^%ydbwebjsonDecodeTest,
+ ; ESTRING^%ydbwebjsonDecodeTest, BASIC^%ydbwebjsonEncodeTest, VALS^%ydbwebjsonEncodeTest, LONG^%ydbwebjsonEncodeTest,
+ ; PRE^%ydbwebjsonEncodeTest, WP^%ydbwebjsonEncodeTest, EXAMPLE^%ydbwebjsonEncodeTest
  S VVLINE=1,VVMAX=100,VVERRORS=0 ; limit document lines to 100 characters
  S @VVJSON@(VVLINE)=""
  ; If first subscript is numeric, run array code and done
@@ -141,11 +141,11 @@ JNUM(N) ; Return JSON representation of a number
  Q N
  ;
 UCODE(C) ; Return \u00nn representation of decimal character value
- N H S H="0000"_$$CNV^%webutils(C,16)
+ N H S H="0000"_$$CNV^%ydbwebutils(C,16)
  Q "\u"_$E(H,$L(H)-3,$L(H))
  ;
 ERRX(ID,VAL) ; Set the appropriate error message
- D ERRX^%webjson(ID,$G(VAL))
+ D ERRX^%ydbwebjson(ID,$G(VAL))
  Q
  ;
  ; Portions of this code are public domain, but it was extensively modified

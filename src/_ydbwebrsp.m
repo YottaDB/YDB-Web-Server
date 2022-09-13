@@ -1,4 +1,4 @@
-%webrsp ;SLC/KCM -- Handle HTTP Response;Jun 20, 2022@14:47
+%ydbwebrsp ;SLC/KCM -- Handle HTTP Response;Jun 20, 2022@14:47
  ;
  ; -- prepare and send RESPONSE
  ;
@@ -6,7 +6,7 @@ RESPOND ; find entry point to handle request and call it
  ; expects HTTPREQ, HTTPRSP is used to return the response
  ;
  N ROUTINE,LOCATION,HTTPARGS,HTTPBODY
- I HTTPREQ("path")="/",HTTPREQ("method")="GET" D en^%webhome(.HTTPRSP) QUIT  ; Home page requested.
+ I HTTPREQ("path")="/",HTTPREQ("method")="GET" D en^%ydbwebhome(.HTTPRSP) QUIT  ; Home page requested.
  I HTTPREQ("method")="OPTIONS" S HTTPRSP="OPTIONS,POST" QUIT ; Always repond to OPTIONS to give CORS header info
  ;
  ; Resolve the URL and authenticate if necessary
@@ -45,9 +45,9 @@ QSPLIT(QPARAMS,QUERY) ; parses and decodes query fragment into array
  ; .QUERY will contain query parameters as subscripts: QUERY("name")=value
  N I,X,NAME,VALUE
  F I=1:1:$L(QPARAMS,"&") D
- . S X=$$URLDEC^%webutils($P(QPARAMS,"&",I))
+ . S X=$$URLDEC^%ydbwebutils($P(QPARAMS,"&",I))
  . S NAME=$P(X,"="),VALUE=$P(X,"=",2,999)
- . I $L(NAME) S QUERY($$LOW^%webutils(NAME))=VALUE
+ . I $L(NAME) S QUERY($$LOW^%ydbwebutils(NAME))=VALUE
  Q
  ;
 MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
@@ -61,25 +61,25 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  ;
  S ROUTINE=""  ; Default. Routine not found. Error 404.
  ;
- ; Using _weburl.m
+ ; Using _ydbweburl.m
  DO MATCHR(.ROUTINE,.ARGS)
  ;
  ; If that failed, try matching against a file on the file system
  I ROUTINE="" DO MATCHFS(.ROUTINE)
  ;
  ; Okay. Do we have a routine to execute?
- I ROUTINE="" D SETERROR^%webutils(404,"Not Found") QUIT
+ I ROUTINE="" D SETERROR^%ydbwebutils(404,"Not Found") QUIT
  ;
  I $G(USERPASS)'="" D
  . ; user must authenticate
  . S HTTPRSP("auth")="Basic realm="""_HTTPREQ("header","host")_"""" ; Send Authentication Header
- . N AUTHEN S AUTHEN=(USERPASS=$$DECODE64^%webutils($P($G(HTTPREQ("header","authorization"))," ",2))) ; Try to authenticate
- . I 'AUTHEN D SETERROR^%webutils(401) QUIT  ; Unauthoirzed
+ . N AUTHEN S AUTHEN=(USERPASS=$$DECODE64^%ydbwebutils($P($G(HTTPREQ("header","authorization"))," ",2))) ; Try to authenticate
+ . I 'AUTHEN D SETERROR^%ydbwebutils(401) QUIT  ; Unauthoirzed
  QUIT
  ;
  ;
-MATCHR(ROUTINE,ARGS) ; Match against _weburl.m
- I $T(^%weburl)="" S ROUTINE="" QUIT
+MATCHR(ROUTINE,ARGS) ; Match against _ydbweburl.m
+ I $T(^%ydbweburl)="" S ROUTINE="" QUIT
  ;
  N METHOD S METHOD=HTTPREQ("method")
  I METHOD="HEAD" S METHOD="GET" ; just for here
@@ -87,15 +87,15 @@ MATCHR(ROUTINE,ARGS) ; Match against _weburl.m
  S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
  N SEQ,PATMETHOD
  N DONE S DONE=0
- F SEQ=1:1 S PATTERN=$P($T(URLMAP+SEQ^%weburl),";;",2,99) Q:PATTERN=""  Q:PATTERN="zzzzz"  D  Q:DONE
+ F SEQ=1:1 S PATTERN=$P($T(URLMAP+SEQ^%ydbweburl),";;",2,99) Q:PATTERN=""  Q:PATTERN="zzzzz"  D  Q:DONE
  . K ARGS
  . S ROUTINE=$P(PATTERN," ",3),PATMETHOD=$P(PATTERN," "),PATTERN=$P(PATTERN," ",2),FAIL=0
  . I $E(PATTERN)="/" S PATTERN=$E(PATTERN,2,$L(PATTERN))
  . I $L(PATTERN,"/")'=$L(PATH,"/") S ROUTINE="" Q  ; must have same number segments
  . F I=1:1:$L(PATH,"/") D  Q:FAIL
- . . S PATHSEG=$$URLDEC^%webutils($P(PATH,"/",I),1)
- . . S PATTSEG=$$URLDEC^%webutils($P(PATTERN,"/",I),1)
- . . I $E(PATTSEG)'="{" S FAIL=($$LOW^%webutils(PATHSEG)'=$$LOW^%webutils(PATTSEG)) Q
+ . . S PATHSEG=$$URLDEC^%ydbwebutils($P(PATH,"/",I),1)
+ . . S PATTSEG=$$URLDEC^%ydbwebutils($P(PATTERN,"/",I),1)
+ . . I $E(PATTSEG)'="{" S FAIL=($$LOW^%ydbwebutils(PATHSEG)'=$$LOW^%ydbwebutils(PATTSEG)) Q
  . . S PATTSEG=$E(PATTSEG,2,$L(PATTSEG)-1) ; get rid of curly braces
  . . S ARGUMENT=$P(PATTSEG,"?"),TEST=$P(PATTSEG,"?",2)
  . . I $L(TEST) S FAIL=(PATHSEG'?@TEST) Q:FAIL
@@ -106,8 +106,8 @@ MATCHR(ROUTINE,ARGS) ; Match against _weburl.m
  ;
 MATCHFS(ROUTINE) ; Match against the file system
  N ARGS S ARGS("*")=$E(HTTPREQ("path"),2,9999)
- D FILESYS^%webapi(.HTTPRSP,.ARGS)
- I $O(HTTPRSP(0)) S ROUTINE="FILESYS^%webapi"
+ D FILESYS^%ydbwebapi(.HTTPRSP,.ARGS)
+ I $O(HTTPRSP(0)) S ROUTINE="FILESYS^%ydbwebapi"
  quit
  ;
 SENDATA ; write out the data as an HTTP response
@@ -126,13 +126,13 @@ SENDATA ; write out the data as an HTTP response
  . K @ARY
  N SIZE,RSPTYPE,PREAMBLE,START,LIMIT
  S RSPTYPE=$S($E($G(HTTPRSP))'="^":1,$D(HTTPRSP("pageable")):3,1:2)
- I RSPTYPE=1 S SIZE=$$VARSIZE^%webutils(.HTTPRSP)
- I RSPTYPE=2 S SIZE=$$REFSIZE^%webutils(.HTTPRSP)
+ I RSPTYPE=1 S SIZE=$$VARSIZE^%ydbwebutils(.HTTPRSP)
+ I RSPTYPE=2 S SIZE=$$REFSIZE^%ydbwebutils(.HTTPRSP)
  ;
  ; TODO: Handle 201 responses differently (change simple OK to created)
  ;
  D W($$RSPLINE()_$C(13,10)) ; Status Line (200, 404, etc)
- D W("Date: "_$$GMT^%webutils_$C(13,10)) ; RFC 1123 date
+ D W("Date: "_$$GMT^%ydbwebutils_$C(13,10)) ; RFC 1123 date
  I $D(HTTPREQ("location")) D W("Location: "_HTTPREQ("location")_$C(13,10))  ; Response Location
  I $D(HTTPRSP("auth")) D W("WWW-Authenticate: "_HTTPRSP("auth")_$C(13,10)) K HTTPRSP("auth") ; Authentication
  I $D(HTTPRSP("cache")) D W("Cache-Control: max-age="_HTTPRSP("cache")_$C(13,10)) K HTTPRSP("cache") ; Browser caching
@@ -237,7 +237,7 @@ RSPERROR ; set response to be an error response
  ; Count is a temporary variable to track multiple errors... don't send it back
  ; pageable is VPR code, not used, but kept for now.
  K HTTPERR("count"),HTTPRSP("pageable")
- D encode^%webjson($NAME(HTTPERR),$NAME(HTTPRSP))
+ D encode^%ydbwebjson($NAME(HTTPERR),$NAME(HTTPRSP))
  Q
 RSPLINE() ; writes out a response line based on HTTPERR
  ; VEN/SMH: TODO: There ought to be a simpler way to do this!!!

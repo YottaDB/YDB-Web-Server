@@ -17,14 +17,14 @@ set -e
 set -o pipefail
 
 if [ "$1" = "server" ]; then
-	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%webreq(9080)'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080)'
 elif [ "$1" = "bash" ] || [ "$1" = "shell" ]; then
 	exec /bin/bash
 elif [ "$1" = "debug" ]; then
 	export ydb_zstep='n oldio s oldio=$io u 0 zp @$zpos b  u oldio'
-	exec /opt/yottadb/current/yottadb -r %XCMD 'zb start^%webreq do start^%webreq(9080)'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'zb start^%ydbwebreq do start^%ydbwebreq(9080)'
 else # "$1" = "test"
-	/opt/yottadb/current/yottadb -r ^%webtest | tee test_output.txt
+	/opt/yottadb/current/yottadb -r ^%ydbwebtest | tee test_output.txt
 
 	set +e # grep will have status of 1 if no lines are found, and that will exit the script!
 	grep -B1 -F '[FAIL]' test_output.txt

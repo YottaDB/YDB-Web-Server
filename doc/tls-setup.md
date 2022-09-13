@@ -1,3 +1,16 @@
+[//]: #  Copyright (c) 2022 YottaDB LLC
+[//]: #
+[//]: #  Licensed under the Apache License, Version 2.0 (the "License");
+[//]: #  you may not use this file except in compliance with the License.
+[//]: #  You may obtain a copy of the License at
+[//]: #
+[//]: #      http://www.apache.org/licenses/LICENSE-2.0
+[//]: #
+[//]: #  Unless required by applicable law or agreed to in writing, software
+[//]: #  distributed under the License is distributed on an "AS IS" BASIS,
+[//]: #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+[//]: #  See the License for the specific language governing permissions and
+[//]: #  limitations under the License.
 # TLS Set-up on YottaDB and Caché
 Setting up TLS is usually hard. These instructions are provided in the hope that they 
 can guide you, but there is not guarantee that they will work. Comments inline.
@@ -46,7 +59,7 @@ $ydb_dist/plugin/gtmcrypt/maskpass <<< 'monkey1234' | cut -d ":" -f2 | tr -d ' '
 export ydbtls_passwd_dev="30A22B54B46618B4361F"
 
 # Run the server like this, substituting the {section name} appropriately. here it is dev
-$ydb_dist/mumps -r %XCMD 'do job^%webreq(9080,"dev")'
+$ydb_dist/mumps -r %XCMD 'do job^%ydbwebreq(9080,"dev")'
 
 # Test the server like this
 curl -k https://localhost:9080
@@ -56,4 +69,4 @@ curl -k https://localhost:9080
 Configure an SSL/TLS Configuration as [described
 here](https://cedocs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=GCAS_ssltls#GCAS_ssltls_createedit).
 
-The server should be started like this: `do job^%webreq(9080,"configuration_name")`.
+The server should be started like this: `do job^%ydbwebreq(9080,"configuration_name")`.

@@ -27,14 +27,14 @@ needs to be able to decode the data coming from the browser.
 
 Encoding is done using:
 
-`do encode^%webjson(M ARRAY INPUT BY NAME,OUTPUT JSON ARRAY BY NAME,ERROR MESSAGES BY NAME)`
+`do encode^%ydbwebjson(M ARRAY INPUT BY NAME,OUTPUT JSON ARRAY BY NAME,ERROR MESSAGES BY NAME)`
 
 Decoding is done using:
 
-`do decode^%webjson(JSON ARRAY INPUT BY NAME, M DEST ARRAY BY NAME, ERROR MESSAGES BY NAME)`
+`do decode^%ydbwebjson(JSON ARRAY INPUT BY NAME, M DEST ARRAY BY NAME, ERROR MESSAGES BY NAME)`
 
 The first two arguments are required; the third argument is optional. If
-not supplied, error messages will be dumped into `%webjsonerr`.
+not supplied, error messages will be dumped into `%ydbwebjsonerr`.
 
 For novice Mumpsters, an array input by name is something like this:
 
@@ -111,7 +111,7 @@ Decoding is done to receive data from the browser and convert it to an M array.
 	GTM>R JSON(5)
 	]}
 
-	GTM>D DECODE^%webjson($NA(JSON),$NA(OUT),$NA(ERR))
+	GTM>D DECODE^%ydbwebjson($NA(JSON),$NA(OUT),$NA(ERR))
 
 	GTM>ZWRITE OUT
 	OUT("count")=3
@@ -158,7 +158,7 @@ the JSON array:
 
 ## Other Utilities
 ### Check for unwanted argumentsa
-You can use `$$UNKARGS^%webutils` to check the input arguments to see if they
+You can use `$$UNKARGS^%ydbwebutils` to check the input arguments to see if they
 are missing. If they are, you need to quit. The HTTP error code is set to 111
 automatically.
 
@@ -166,14 +166,14 @@ Below, we are checking that the input variables to a fileman call are all
 present. If not, we send back an error code of 111. We don't need to set the
 error ourselves. Pass args by reference; and the list of fields as a literal.
 
-	I $$UNKARGS^%webutils(.ARGS,"file,iens,field,screen,match") Q  ; Is any of these not passed?
+	I $$UNKARGS^%ydbwebutils(.ARGS,"file,iens,field,screen,match") Q  ; Is any of these not passed?
 
 ### Converting a single long line with $C(13,10) (CR/LF) to an array and the converse
 This can take the body of a POST/PUT and convert it to a linear array.
 
 Using this call (passing the input and output by reference):
 
-	 D PARSE10^%webutils(.BODY,.PARSED) ; Parser
+	 D PARSE10^%ydbwebutils(.BODY,.PARSED) ; Parser
 
 E.g. 
 
@@ -187,7 +187,7 @@ becomes
 
 Here's the opposite (again, pass input by reference; will also be output):
 
-	D ADDCRLF^%webutils(.RESULTS) ; crlf the result
+	D ADDCRLF^%ydbwebutils(.RESULTS) ; crlf the result
 
 Now, gee, why would I want to do that? Well, if you have word processing fields,
 where you need to keep the line breaks as Fileman has them, you need to add a
@@ -199,8 +199,8 @@ you can send to the user an HTTP error code and then quit. This looks like this:
 
 Like:
 
-	D SETERROR^%webutils(HTTP code,error description) QUIT appropriately
+	D SETERROR^%ydbwebutils(HTTP code,error description) QUIT appropriately
 
 E.g.
 
-	D SETERROR^%webutils("400","Input parameters not correct") Q:$Q "" Q
+	D SETERROR^%ydbwebutils("400","Input parameters not correct") Q:$Q "" Q

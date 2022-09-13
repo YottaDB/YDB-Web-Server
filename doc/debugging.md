@@ -1,3 +1,16 @@
+[//]: #  Copyright (c) 2022 YottaDB LLC
+[//]: #
+[//]: #  Licensed under the Apache License, Version 2.0 (the "License");
+[//]: #  you may not use this file except in compliance with the License.
+[//]: #  You may obtain a copy of the License at
+[//]: #
+[//]: #      http://www.apache.org/licenses/LICENSE-2.0
+[//]: #
+[//]: #  Unless required by applicable law or agreed to in writing, software
+[//]: #  distributed under the License is distributed on an "AS IS" BASIS,
+[//]: #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+[//]: #  See the License for the specific language governing permissions and
+[//]: #  limitations under the License.
 # Debugging Code Written using the M-Web-Server
 Most of the time, if you write something of significant complexity, you may
 need to set a breakpoint and trace through it. The M-Web-Server supports a mode
@@ -12,8 +25,8 @@ us at r/{routine}. From the home page, we know that it calls R^%W0. So what we
 can do is put a break point there, and then launch the web server in debug mode.
 
 ```
-zbreak R^%webapi
-D start^%webreq(9080,1)
+zbreak R^%ydbwebapi
+D start^%ydbwebreq(9080,1)
 ```
 
 Now, we need to make a web service call to get a routine. In another terminal

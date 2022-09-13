@@ -4,6 +4,7 @@ VPRJUJ01 ;SLC/KCM -- Sample data for JSON decoding;2019-07-16  2:18 PM
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright 2016 Accenture Federal Services
  ; Copyright 2013-2019 Sam Habiel
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

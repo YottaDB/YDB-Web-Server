@@ -1,16 +1,16 @@
-%webjsonDecode ;SLC/KCM -- Decode JSON;2019-11-14  9:06 AM
+%ydbwebjsonDecode ;SLC/KCM -- Decode JSON;2019-11-14  9:06 AM
  ;
 decode(VVJSON,VVROOT,VVERR) G DIRECT
 DECODE(VVJSON,VVROOT,VVERR) ; Set JSON object into closed array ref VVROOT
  ;
-DIRECT ; TAG for use by DECODE^%webjson
+DIRECT ; TAG for use by DECODE^%ydbwebjson
  ;
- ; Examples: D decode^%webjson("MYJSON","LOCALVAR","LOCALERR")
- ;           D decode^%webjson("^MYJSON(1)","^GLO(99)","^TMP($J)")
+ ; Examples: D decode^%ydbwebjson("MYJSON","LOCALVAR","LOCALERR")
+ ;           D decode^%ydbwebjson("^MYJSON(1)","^GLO(99)","^TMP($J)")
  ;
  ; VVJSON: string/array containing serialized JSON object
  ; VVROOT: closed array reference for M representation of object
- ;  VVERR: contains error messages, defaults to ^TMP("%webjsonerr",$J)
+ ;  VVERR: contains error messages, defaults to ^TMP("%ydbwebjsonerr",$J)
  ;
  ;   VVIDX: points to next character in JSON string to process
  ; VVSTACK: manages stack of subscripts
@@ -18,9 +18,9 @@ DIRECT ; TAG for use by DECODE^%webjson
  ;
  ; V4W/DLW - Changed VVMAX from 4000 to 100, same as in the encoder
  ; With the change to VVMAX, the following Unit Tests required changes:
- ; SPLITA^%webjsonDecodeTest, SPLITB^%webjsonDecodeTest, LONG^%webjsonDecodeTest, MAXNUM^%webjsonDecodeTest
+ ; SPLITA^%ydbwebjsonDecodeTest, SPLITB^%ydbwebjsonDecodeTest, LONG^%ydbwebjsonDecodeTest, MAXNUM^%ydbwebjsonDecodeTest
  N VVMAX S VVMAX=100 ; limit document lines to 100 characters
- S VVERR=$G(VVERR,"%webjsonerr")
+ S VVERR=$G(VVERR,"%ydbwebjsonerr")
  ; If a simple string is passed in, move it to an temp array (VVINPUT)
  ; so that the processing is consistently on an array.
  I $D(@VVJSON)=1 N VVINPUT S VVINPUT(1)=@VVJSON,VVJSON="VVINPUT"
@@ -121,7 +121,7 @@ UESEXT ; unescape from VVLINE,VVIDX to VVTLINE,VVEND & extend (\) if necessary
  . I VVTGT="u" D  I 1
  . . N VVTGTC S VVTGTC=$E(@VVJSON@(VVY),VVI+1,VVI+4),VVI=VVI+4
  . . I $L(VVTGTC)<4 S VVY=VVY+1,VVI=4-$L(VVTGTC),VVTGTC=VVTGTC_$E(@VVJSON@(VVY),1,VVI)
- . . D ADDBUF($C($$DEC^%webutils(VVTGTC,16)))
+ . . D ADDBUF($C($$DEC^%ydbwebutils(VVTGTC,16)))
  . E  D ADDBUF($$REALCHAR(VVTGT))
  . S VVI=VVI+1
  . I (VVY'<VVTLINE),(VVI>VVSTOP) S VVDONE=1 ; VVI incremented past stop
@@ -231,7 +231,7 @@ UES(X,KEY) ; Unescape JSON string
  . ; otherwise handle escaped char
  . N TGT
  . S TGT=$E(X,POS),Y=Y_$E(X,START,POS-2)
- . I TGT="u" S Y=Y_$C($$DEC^%webutils($E(X,POS+1,POS+4),16)),POS=POS+4 Q
+ . I TGT="u" S Y=Y_$C($$DEC^%ydbwebutils($E(X,POS+1,POS+4),16)),POS=POS+4 Q
  . S Y=Y_$$REALCHAR(TGT,$G(KEY))
  Q Y
  ;
@@ -245,13 +245,13 @@ REALCHAR(C,KEY) ; Return actual character from escaped
  I C="n" Q $C(10)
  I C="r" Q $C(13)
  I C="t" Q $C(9)
- I C="u" ;case covered above in $$DEC^%webutils calls
+ I C="u" ;case covered above in $$DEC^%ydbwebutils calls
  ;otherwise
  I $L($G(VVERR)) D ERRX("ESC",C)
  Q C
  ;
 ERRX(ID,VAL) ; Set the appropriate error message
- D ERRX^%webjson(ID,$G(VAL))
+ D ERRX^%ydbwebjson(ID,$G(VAL))
  Q
  ;
  ; Portions of this code are public domain, but it was extensively modified

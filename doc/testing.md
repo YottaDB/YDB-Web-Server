@@ -1,16 +1,29 @@
+[//]: #  Copyright (c) 2022 YottaDB LLC
+[//]: #
+[//]: #  Licensed under the Apache License, Version 2.0 (the "License");
+[//]: #  you may not use this file except in compliance with the License.
+[//]: #  You may obtain a copy of the License at
+[//]: #
+[//]: #      http://www.apache.org/licenses/LICENSE-2.0
+[//]: #
+[//]: #  Unless required by applicable law or agreed to in writing, software
+[//]: #  distributed under the License is distributed on an "AS IS" BASIS,
+[//]: #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+[//]: #  See the License for the specific language governing permissions and
+[//]: #  limitations under the License.
 # Testing
 ## Automated Testing on VistA Instance
-%webtest is the main testing routine. It only works on GTM/YDB, and requires
+%ydbwebtest is the main testing routine. It only works on GTM/YDB, and requires
 the libcurl plugin (https://github.com/shabiel/fis-gtm-plugins/tree/master/libcurl).
 
 You need to fix the variables acvc and dfn to be valid variables and patient for
 your instance.
 
 ```
-FOIA201805-SYN>D ^%webtest
+FOIA201805-SYN>D ^%ydbwebtest
 
 
- ---------------------------------- %webtest ----------------------------------
+ ---------------------------------- %ydbwebtest ----------------------------------
 tdebug - Debug Entry Point..----------------------------------  [OK]  149.808ms
 thome - Test Home Page..--------------------------------------  [OK]   37.508ms
 tgetr - Test Get Handler Routine..----------------------------  [OK]   81.437ms
@@ -37,7 +50,7 @@ tDCLog - Test Disconnecting from the Server w/o talking while logging.
 tWebPage - Test Getting a web page....------------------------  [OK]   74.997ms
 tINIT - Test Fileman INIT code
    Deleting the DATA DICTIONARY.....
-This version (#1.0) of '%webINIT' was created on 22-JAN-2019
+This version (#1.0) of '%ydbwebINIT' was created on 22-JAN-2019
          (at DEMO.OSEHRA.ORG, by MSC FileMan 22.1061)
 
 I AM GOING TO SET UP THE FOLLOWING FILES:
@@ -61,7 +74,7 @@ tStop - Stop the Server. MUST BE LAST TEST HERE.--------------  [OK]    0.137ms
 STOP issued to process 93463
 
 
- ----------------------------- %webjsonEncodeTest -----------------------------
+ ----------------------------- %ydbwebjsonEncodeTest -----------------------------
 NUMERIC - is numeric function............---------------------  [OK]    0.494ms
 NEARZERO - encode of numbers near 0.--------------------------  [OK]    0.503ms
 JSONESC - create JSON escaped string.........-----------------  [OK]    0.947ms
@@ -76,7 +89,7 @@ LABELS - unusual labels..-------------------------------------  [OK]    0.704ms
 EXAMPLE - encode samples that are on JSON.ORG.....------------  [OK]   13.614ms
 KEYESC - keys should be escaped.------------------------------  [OK]    0.380ms
 
- ----------------------------- %webjsonDecodeTest -----------------------------
+ ----------------------------- %ydbwebjsonDecodeTest -----------------------------
 JSONUES - unescape JSON encoded string........----------------  [OK]    0.648ms
 SPLITA - JSON input with escaped characters on single line (uses BUILD)......
  -------------------------------------------------------------  [OK]    1.598ms
@@ -121,7 +134,7 @@ COVERAGE PERCENTAGE: 80.42
 
 
 BY ROUTINE:
-  %webapi         55.13%  129 out of 234
+  %ydbwebapi         55.13%  129 out of 234
     ERR              100.00%  2 out of 2
     F                  0.00%  0 out of 11
     FILESYS          100.00%  58 out of 58
@@ -138,9 +151,9 @@ BY ROUTINE:
     SAVE             100.00%  10 out of 10
     bigoutput        100.00%  8 out of 8
     rpc2             100.00%  7 out of 7
-  %webhome       100.00%  31 out of 31
+  %ydbwebhome       100.00%  31 out of 31
     en               100.00%  31 out of 31
-  %webjson        86.11%  31 out of 36
+  %ydbwebjson        86.11%  31 out of 36
     DECODE           100.00%  1 out of 1
     ENCODE           100.00%  1 out of 1
     ERRX              87.50%  21 out of 24
@@ -151,7 +164,7 @@ BY ROUTINE:
     encode           100.00%  1 out of 1
     esc                0.00%  0 out of 1
     ues                0.00%  0 out of 1
-  %webjsonDe      96.43%  162 out of 168
+  %ydbwebjsonDe      96.43%  162 out of 168
     ADDBUF           100.00%  3 out of 3
     ADDSTR           100.00%  16 out of 16
     CURNODE          100.00%  6 out of 6
@@ -169,7 +182,7 @@ BY ROUTINE:
     SETSTR           100.00%  7 out of 7
     UES              100.00%  10 out of 10
     UESEXT           100.00%  22 out of 22
-  %webjsonEn      95.70%  89 out of 93
+  %ydbwebjsonEn      95.70%  89 out of 93
     CONCAT           100.00%  3 out of 3
     DIRECT           100.00%  8 out of 8
     ERRX               0.00%  0 out of 2
@@ -182,7 +195,7 @@ BY ROUTINE:
     SEROBJ            92.31%  12 out of 13
     SERVAL           100.00%  17 out of 17
     UCODE            100.00%  2 out of 2
-  %webreq         80.53%  182 out of 226
+  %ydbwebreq         80.53%  182 out of 226
     ADDHEAD           91.67%  11 out of 12
     CHILDDEBUG       100.00%  8 out of 8
     DEBUG             83.33%  5 out of 6
@@ -212,7 +225,7 @@ BY ROUTINE:
     job                0.00%  0 out of 4
     start             78.95%  15 out of 19
     stop             100.00%  2 out of 2
-  %webrsp         86.94%  233 out of 268
+  %ydbwebrsp         86.94%  233 out of 268
     AUTHEN            72.73%  8 out of 11
     BODYASSTR        100.00%  4 out of 4
     FLUSH            100.00%  3 out of 3
@@ -229,7 +242,7 @@ BY ROUTINE:
     SENDATA           88.37%  38 out of 43
     W                100.00%  4 out of 4
     XML              100.00%  10 out of 10
-  %webutils       77.53%  207 out of 267
+  %ydbwebutils       77.53%  207 out of 267
     ADDCRLF          100.00%  6 out of 6
     BASE             100.00%  2 out of 2
     CNV              100.00%  3 out of 3
@@ -307,9 +320,9 @@ Step 10/11 : ENV GTMXC_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.
  ---> Running in 667c4e890bc9
 Removing intermediate container 667c4e890bc9
  ---> 25cd79119660
-Step 11/11 : RUN . /opt/yottadb/current/ydb_env_set &&     export ydb_routines="/mwebserver/r /data/munit/r $ydb_routines" &&     mumps -r ^%webtest
+Step 11/11 : RUN . /opt/yottadb/current/ydb_env_set &&     export ydb_routines="/mwebserver/r /data/munit/r $ydb_routines" &&     mumps -r ^%ydbwebtest
  ---> Running in 2531e569c375
- ---------------------------------- %webtest ----------------------------------
+ ---------------------------------- %ydbwebtest ----------------------------------
 tdebug - Debug Entry Point..----------------------------------  [OK]  150.463ms
 thome - Test Home Page..--------------------------------------  [OK]   15.992ms
 tgetr - Test Get Handler Routine..----------------------------  [OK]   31.241ms
@@ -348,7 +361,7 @@ tStop - Stop the Server. MUST BE LAST TEST HERE.--------------  [OK]    0.286ms
 STOP issued to process 37
 
 
- ----------------------------- %webjsonEncodeTest -----------------------------
+ ----------------------------- %ydbwebjsonEncodeTest -----------------------------
 NUMERIC - is numeric function............---------------------  [OK]    2.313ms
 NEARZERO - encode of numbers near 0.--------------------------  [OK]    0.852ms
 JSONESC - create JSON escaped string.........-----------------  [OK]    2.045ms
@@ -363,7 +376,7 @@ LABELS - unusual labels..-------------------------------------  [OK]    1.491ms
 EXAMPLE - encode samples that are on JSON.ORG.....------------  [OK]   15.676ms
 KEYESC - keys should be escaped.------------------------------  [OK]    0.532ms
 
- ----------------------------- %webjsonDecodeTest -----------------------------
+ ----------------------------- %ydbwebjsonDecodeTest -----------------------------
 JSONUES - unescape JSON encoded string........----------------  [OK]    4.072ms
 SPLITA - JSON input with escaped characters on single line (uses BUILD)......
  -------------------------------------------------------------  [OK]    2.901ms
@@ -415,21 +428,21 @@ Tests without VistA:
 - curl --compressed localhost:9080/test/empty
 - curl localhost:9080/r/%25webapi
 - curl -I localhost:9080/r/%25webapi
-- do resetURLs^%webtest
+- do resetURLs^%ydbwebtest
 - curl localhost:9080/test/error
 - curl localhost:9080/test/error?foo=crash2
 - curl localhost:9080/test/bigoutput
 - curl localhost:9080/test/gloreturn
 - nc -v localhost 9080 # CTRL-C after that
 - curl -I localhost:9080/r/%25webapi
-- do stop^%webreq
-- set ^%webhttp(0,"logging")=3
-- do ^%webreq
+- do stop^%ydbwebreq
+- set ^%ydbwebhttp(0,"logging")=3
+- do ^%ydbwebreq
 - curl -I localhost:9080/r/%25webapi
-- zwrite ^%webhttp("log")
-- set ^%webhome="/tmp/"
+- zwrite ^%ydbwebhttp("log")
+- set ^%ydbwebhome="/tmp/"
 - curl localhost:9080/webinit.rsa
-- kill ^%webhome
+- kill ^%ydbwebhome
 - curl localhost:9080/cache.lck
 ```
 
@@ -442,7 +455,7 @@ Tests with VistA:
 - curl localhost:9080/test/xml
 - curl localhost:9080/test/empty
 - curl --compressed localhost:9080/test/empty
-- do resetURLs^%webtest
+- do resetURLs^%ydbwebtest
 - curl localhost:9080/r/%25webapi
 - curl -I localhost:9080/r/%25webapi
 - curl localhost:9080/test/error
@@ -455,13 +468,13 @@ Tests with VistA:
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc2/ORWU%20NEWPERS' -d 'start=A&direction=1'
 - nc -v localhost 9080 # CTRL-C after that
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc2/ORWU%20NEWPERS' -d 'start=A&direction=1'
-- do stop^%webreq
-- set ^%webhttp(0,"logging")=3
-- do ^%webreq
+- do stop^%ydbwebreq
+- set ^%ydbwebhttp(0,"logging")=3
+- do ^%ydbwebreq
 - curl 'http://SM1234:SM1234!!!@localhost:9080/rpc2/ORWU%20NEWPERS' -d 'start=A&direction=1'
-- zwrite ^%webhttp("log")
-- set ^%webhome="/tmp/"
+- zwrite ^%ydbwebhttp("log")
+- set ^%ydbwebhome="/tmp/"
 - curl localhost:9080/webinit.rsa
-- kill ^%webhome
+- kill ^%ydbwebhome
 - curl localhost:9080/cache.lck
 ```

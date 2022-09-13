@@ -1,4 +1,4 @@
-%webutils ;SLC/KCM -- Utilities for HTTP communications ;Jun 20, 2022@12:21
+%ydbwebutils ;SLC/KCM -- Utilities for HTTP communications ;Jun 20, 2022@12:21
  ;
 UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 LOW(X) Q $TR(X,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")

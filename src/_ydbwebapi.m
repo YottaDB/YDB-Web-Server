@@ -1,17 +1,17 @@
-%webapi ; OSE/SMH - Infrastructure web services hooks;Jun 20, 2022@14:45
+%ydbwebapi ; OSE/SMH - Infrastructure web services hooks;Jun 20, 2022@14:45
  ;
 R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
  N RTN S RTN=$G(ARGS("routine"))
  N OFF,I
  I RTN]""&($T(^@RTN)]"") F I=1:1 S OFF="+"_I,LN0=OFF_"^"_RTN,LN=$T(@LN0) Q:LN=""  S RESULT(I)=LN_$C(13,10)
- E  K RESULT("mime") D setError^%webutils(404,"Routine not found")
+ E  K RESULT("mime") D setError^%ydbwebutils(404,"Routine not found")
  QUIT
  ;
 PR(ARGS,BODY,RESULT) ; [Public] PUT /r/{routine} Mumps Routine
  S HTTPRSP("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  N PARSED ; Parsed array which stores each line on a separate node.
- D PARSE10^%webutils(.BODY,.PARSED) ; Parser
+ D PARSE10^%ydbwebutils(.BODY,.PARSED) ; Parser
  N DIE,XCN S DIE="PARSED(",XCN=0 D SAVE(ARGS("routine"))
  Q "/r/"_ARGS("routine")
  ;
@@ -46,7 +46,7 @@ bigoutput(result,args) ; GET /test/bigoutput - Used by Unit Tests to ensure larg
  quit
  ;
 gloreturn(result,args) ; GET /test/gloreturn - Used by Unit Tests to ensure Global deleted properly
- s result=$name(^web("%webapi"))
+ s result=$name(^web("%ydbwebapi"))
  s @result="coo"_$c(13,10)
  s @result@(1)="boo"_$c(13,10)
  s @result@(2)="foo"_$c(13,10)
@@ -60,7 +60,7 @@ utf8get(res,params) ; /test/utf8/get
  ;
 utf8post(params,body,res) ; /test/utf8/post
  new output
- do decode^%webjson($na(body),$na(output))
+ do decode^%ydbwebjson($na(body),$na(output))
  set res(1)=$extract(params("foo"),1,3)_$C(13,10)
  set res(2)=$get(output("直接"))
  quit "test/utf8/post?foo="_params("foo")
@@ -85,7 +85,7 @@ customerr(r,a) ; custom error
  s errarr("issue",1,"severity")="error"
  s errarr("issue",1,"code")="processing"
  s errarr("issue",1,"diagnostics")="Test message"
- d customError^%webutils(400,.errarr)
+ d customError^%ydbwebutils(400,.errarr)
  quit
  ;
 empty(r,a) ; Empty. Used For Unit Tests
@@ -94,8 +94,8 @@ empty(r,a) ; Empty. Used For Unit Tests
  ;
 posttest(ARGS,BODY,RESULT) ; Simple test for post, handles /test/post
  N PARAMS ; Parsed array which stores each line on a separate node.
- D decode^%webjson($NA(BODY),$NA(PARAMS),$NA(%WERR))
- I $D(%WERR) D SETERROR^%webutils("400","Input parameters not correct") QUIT ""
+ D decode^%ydbwebjson($NA(BODY),$NA(PARAMS),$NA(%WERR))
+ I $D(%WERR) D SETERROR^%ydbwebutils("400","Input parameters not correct") QUIT ""
  ;
  S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  S RESULT="/path/"_PARAMS("random")_"/1" ; Stored URL
@@ -175,7 +175,7 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ;
 FILESYSE ; 500
  S $EC=""
- D setError^%webutils("500",$ZS)
+ D setError^%ydbwebutils("500",$ZS)
  QUIT
  ;
  ; Copyright (c) 2013-2020 Sam Habiel

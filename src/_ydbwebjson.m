@@ -1,42 +1,42 @@
-%webjson ;SLC/KCM -- Decode/Encode JSON;2019-07-16  2:17 PM
+%ydbwebjson ;SLC/KCM -- Decode/Encode JSON;2019-07-16  2:17 PM
  ;
  ; Note:  Since the routines use closed array references, VVROOT and VVERR
  ;        are used to reduce risk of naming conflicts on the closed array.
  ;
-decode(VVJSON,VVROOT,VVERR) G DIRECT^%webjsonDecode
+decode(VVJSON,VVROOT,VVERR) G DIRECT^%ydbwebjsonDecode
 DECODE(VVJSON,VVROOT,VVERR)  ; Set JSON object into closed array ref VVROOT
- ; Examples: D decode^%webjson("MYJSON","LOCALVAR","LOCALERR")
- ;           D decode^%webjson("^MYJSON(1)","^GLO(99)","^TMP($J)")
+ ; Examples: D decode^%ydbwebjson("MYJSON","LOCALVAR","LOCALERR")
+ ;           D decode^%ydbwebjson("^MYJSON(1)","^GLO(99)","^TMP($J)")
  ;
  ; VVJSON: string/array containing serialized JSON object
  ; VVROOT: closed array reference for M representation of object
- ;  VVERR: contains error messages, defaults to ^TMP("%webjsonerr",$J)
+ ;  VVERR: contains error messages, defaults to ^TMP("%ydbwebjsonerr",$J)
  ;
  ;   VVIDX: points to next character in JSON string to process
  ; VVSTACK: manages stack of subscripts
  ;  VVPROP: true if next string is property name, otherwise treat as value
  ;
- G DIRECT^%webjsonDecode
+ G DIRECT^%ydbwebjsonDecode
  ;
-encode(VVROOT,VVJSON,VVERR) G DIRECT^%webjsonEncode
+encode(VVROOT,VVJSON,VVERR) G DIRECT^%ydbwebjsonEncode
 ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
- ; Examples:  D encode^%webjson("^GLO(99,2)","^TMP($J)")
- ;            D encode^%webjson("LOCALVAR","MYJSON","LOCALERR")
+ ; Examples:  D encode^%ydbwebjson("^GLO(99,2)","^TMP($J)")
+ ;            D encode^%ydbwebjson("LOCALVAR","MYJSON","LOCALERR")
  ;
  ; VVROOT: closed array reference for M representation of object
  ; VVJSON: destination variable for the string array formatted as JSON
- ;  VVERR: contains error messages, defaults to ^TMP("%webjsonerr",$J)
+ ;  VVERR: contains error messages, defaults to ^TMP("%ydbwebjsonerr",$J)
  ;
- G DIRECT^%webjsonEncode
+ G DIRECT^%ydbwebjsonEncode
  ;
  ;
-esc(x) Q $$ESC^%webjsonEncode(X)
+esc(x) Q $$ESC^%ydbwebjsonEncode(X)
 ESC(X) ; Escape string for JSON
- Q $$ESC^%webjsonEncode(X)
+ Q $$ESC^%ydbwebjsonEncode(X)
  ;
-ues(x) Q $$UES^%webjsonDecode(X)
+ues(x) Q $$UES^%ydbwebjsonDecode(X)
 UES(X) ; Unescape JSON string
- Q $$UES^%webjsonDecode(X)
+ Q $$UES^%ydbwebjsonDecode(X)
  ;
 ERRX(ID,VAL) ; Set the appropriate error message
  ; switch (ID) -- XERRX ends statement
@@ -78,6 +78,7 @@ XERRX ; end switch
  ;
  ; Most of this code is public domain. New lower case entry points
  ; Copyright 2013-2019 Sam Habiel
+ ; Copyright (c) 2022 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

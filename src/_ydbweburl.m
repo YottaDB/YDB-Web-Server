@@ -1,21 +1,21 @@
-%weburl ;YottaDB/CJE -- URL Matching routine;Jun 20, 2022@14:48
+%ydbweburl ;YottaDB/CJE -- URL Matching routine;Jun 20, 2022@14:48
  ;
  ; This routine is used to map URLs to entry points under
  ; the URLMAP entry point.
  ;
 URLMAP ;
- ;;GET ping ping^%webapi
- ;;GET /r/{routine?.1"%25".32AN} R^%webapi
- ;;PUT /r/{routine?.1"%25".32AN} PR^%webapi
- ;;GET /test/error err^%webapi
- ;;GET test/bigoutput bigoutput^%webapi
- ;;GET test/gloreturn gloreturn^%webapi
- ;;GET /test/xml xml^%webapi
- ;;GET /test/empty empty^%webapi
- ;;GET test/customerror customerr^%webapi
- ;;POST test/post posttest^%webapi
- ;;GET test/utf8/get utf8get^%webapi
- ;;POST test/utf8/post utf8post^%webapi
+ ;;GET ping ping^%ydbwebapi
+ ;;GET /r/{routine?.1"%25".32AN} R^%ydbwebapi
+ ;;PUT /r/{routine?.1"%25".32AN} PR^%ydbwebapi
+ ;;GET /test/error err^%ydbwebapi
+ ;;GET test/bigoutput bigoutput^%ydbwebapi
+ ;;GET test/gloreturn gloreturn^%ydbwebapi
+ ;;GET /test/xml xml^%ydbwebapi
+ ;;GET /test/empty empty^%ydbwebapi
+ ;;GET test/customerror customerr^%ydbwebapi
+ ;;POST test/post posttest^%ydbwebapi
+ ;;GET test/utf8/get utf8get^%ydbwebapi
+ ;;POST test/utf8/post utf8post^%ydbwebapi
  ;;zzzzz
  ;
  ; Copyright (c) 2019 Christopher Edwards

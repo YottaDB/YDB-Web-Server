@@ -1,4 +1,4 @@
-%webtest ; ose/smh - Web Services Tester;Jun 20, 2022@15:59
+%ydbwebtest ; ose/smh - Web Services Tester;Jun 20, 2022@15:59
  ; Runs only on GTM/YDB
  ; Requires M-Unit
  ;
@@ -7,7 +7,7 @@ test if $text(^%ut)="" quit
  quit
  ;
 STARTUP ;
- job start^%webreq(55728)
+ job start^%ydbwebreq(55728)
  set myJob=$zjob
  hang .1
  quit
@@ -22,7 +22,7 @@ SHUTDOWN ;
  quit
  ;
 tdebug ; @TEST Debug Entry Point
- job start^%webreq(55729,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ job start^%ydbwebreq(55729,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  h .1
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55729/")
@@ -40,7 +40,7 @@ thome ; @TEST Test Home Page
  ;
 tgetr ; @TEST Test Get Handler Routine
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/%25webapi")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/%25ydbwebapi")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return["YottaDB LLC")
  quit
@@ -75,12 +75,12 @@ tdecodeutf8 ; @TEST Test Decode UTF-8 URL
  ;
 tencdecutf8 ; @TEST Encode and Decode UTF-8
  n x s x="foo=Å"
- do CHKEQ^%ut(x,$$URLDEC^%webutils($$URLENC^%webutils(x)))
+ do CHKEQ^%ut(x,$$URLDEC^%ydbwebutils($$URLENC^%ydbwebutils(x)))
  quit
  ;
 tencdecx ; @Test Encode and Decode an excepted character
  n x s x=","
- do CHKEQ^%ut(x,$$URLDEC^%webutils($$URLENC^%webutils(x)))
+ do CHKEQ^%ut(x,$$URLDEC^%ydbwebutils($$URLENC^%ydbwebutils(x)))
  quit
  ;
 tpostutf8 ; @TEST Post UTF8 data, expect parts of url post data back
@@ -114,7 +114,7 @@ tgzip ; @TEST Test gzip encoding
  n httpStatus,return,headers
  d &libcurl.init
  d &libcurl.addHeader("Accept-Encoding: gzip")
- n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/%25webapi",,,1,.headers)
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/%25ydbwebapi",,,1,.headers)
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(headers["Content-Encoding: gzip")
  view "nobadchar"
@@ -126,17 +126,17 @@ tnogzipflag ; @TEST Test nogzip flag
  n gzipflagjob
  ;
  ; Start server with no gzip
- j start^%webreq(55732,"",,,,1)
+ j start^%ydbwebreq(55732,"",,,,1)
  h .1
  s gzipflagjob=$zjob
  ;
  n httpStatus,return,headers
  d &libcurl.init
  d &libcurl.addHeader("Accept-Encoding: gzip") ; This must be sent to properly test as the server is smart and if we don't send that we support gzip it won't gzip
- n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55732/r/%25webapi",,,1,.headers)
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55732/r/%25ydbwebapi",,,1,.headers)
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(headers'["Content-Encoding: gzip")
- do CHKTF^%ut(return["webapi ; OSE/SMH - Infrastructure web services hooks")
+ do CHKTF^%ut(return["ydbwebapi ; OSE/SMH - Infrastructure web services hooks")
  ;
  ; now stop the webserver again
  open "p":(command="$gtm_dist/mupip stop "_gzipflagjob)::"pipe"
@@ -205,7 +205,7 @@ tKillGlo ; #TEST kill global after sending result in it
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gloreturn")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return["coo")
- do CHKTF^%ut('$d(^web("%webapi")))
+ do CHKTF^%ut('$d(^web("%ydbwebapi")))
  quit
  ;
 tDC ; @TEST Test Disconnecting from the Server w/o talking
@@ -229,7 +229,7 @@ tInt ; @TEST ZInterrupt
  ;
 tLog1 ; @TEST Set HTTPLOG to 1
  ; This is the default logging, no need to set
- job start^%webreq(55731):(IN="/dev/null":OUT="/tmp/sim-stdout1":ERR="/dev/null"):5
+ job start^%ydbwebreq(55731):(IN="/dev/null":OUT="/tmp/sim-stdout1":ERR="/dev/null"):5
  new serverjob set serverjob=$zjob
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
@@ -250,7 +250,7 @@ tLog1 ; @TEST Set HTTPLOG to 1
  quit
  ;
 tLog2 ; @TEST Set HTTPLOG to 2
- job start^%webreq(55731,,,2):(IN="/dev/null":OUT="/tmp/sim-stdout2":ERR="/dev/null"):5
+ job start^%ydbwebreq(55731,,,2):(IN="/dev/null":OUT="/tmp/sim-stdout2":ERR="/dev/null"):5
  new serverjob set serverjob=$zjob
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
@@ -274,14 +274,14 @@ tLog2 ; @TEST Set HTTPLOG to 2
  quit
  ;
 tLog3 ; @TEST Set HTTPLOG to 3
- job start^%webreq(55731,,,3):(IN="/dev/null":OUT="/tmp/sim-stdout3":ERR="/dev/null"):5
+ job start^%ydbwebreq(55731,,,3):(IN="/dev/null":OUT="/tmp/sim-stdout3":ERR="/dev/null"):5
  new serverjob set serverjob=$zjob
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
  else  D FAIL^%ut("Failed to connect to server") quit
  close "sock"
  n httpStatus,return,x
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/r/%25webapi")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/r/%25ydbwebapi")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return["YottaDB LLC")
  open "/tmp/sim-stdout3":(stream:readonly:rewind:delimiter=$char(10))
@@ -296,7 +296,7 @@ tLog3 ; @TEST Set HTTPLOG to 3
  quit
  ;
 tDCLog ; @TEST Test Log Disconnect
- job start^%webreq(55731,,,3):(IN="/dev/null":OUT="/tmp/sim-stdout4":ERR="/dev/null"):5
+ job start^%ydbwebreq(55731,,,3):(IN="/dev/null":OUT="/tmp/sim-stdout4":ERR="/dev/null"):5
  new serverjob set serverjob=$zjob
  open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
  else  D FAIL^%ut("Failed to connect to server") quit
@@ -319,7 +319,7 @@ tWebPage ; @TEST Test Getting a web page
  ; Now start a webserver with a new zdirectory of /tmp/
  new oldDir set oldDir=$zd
  set $zd="/tmp/"
- job start^%webreq(55731)
+ job start^%ydbwebreq(55731)
  hang .1
  new serverjob set serverjob=$zjob
  zsy "mkdir -p /tmp/foo"
@@ -352,7 +352,7 @@ tHomePage ; @Test Getting index.html page
  ; Now start a webserver with a new zdirectory of /tmp/
  new oldDir set oldDir=$zd
  set $zd="/tmp/"
- job start^%webreq(55731)
+ job start^%ydbwebreq(55731)
  hang .1
  set nogblJob=$zjob
  new random s random=$R(9817234)
@@ -398,7 +398,7 @@ USERPASS ; @TEST Test that passing a username/password works
  n passwdJob
  ;
  ; Now start a webserver with a passed username/password
- j start^%webreq(55730,"",,,"admin:admin")
+ j start^%ydbwebreq(55730,"",,,"admin:admin")
  h .1
  s passwdJob=$zjob
  ;
@@ -438,12 +438,12 @@ tpost ; @TEST simple post
  quit
  ;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
- do stop^%webreq
+ do stop^%ydbwebreq
  quit
  ;
 XTROU ;
- ;;%webjsonEncodeTest
- ;;%webjsonDecodeTest
+ ;;%ydbwebjsonEncodeTest
+ ;;%ydbwebjsonDecodeTest
  ;;
 EOR ;
  ;

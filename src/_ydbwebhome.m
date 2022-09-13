@@ -1,4 +1,4 @@
-%webhome ; VEN/SMH - Home page processor;Jun 20, 2022@15:59
+%ydbwebhome ; VEN/SMH - Home page processor;Jun 20, 2022@15:59
  ;;
  ; Copyright (c) 2013-2019 Sam Habiel
  ; Copyright (c) 2022 YottaDB LLC
@@ -20,7 +20,7 @@ en(RESULT) ; PEP
  N CRLF S CRLF=$C(13,10)
  N ARGS S ARGS("*")="index.html"
  ; Retrieve index.html from filesystem before returning default page
- D FILESYS^%webapi(.RESULT,.ARGS)
+ D FILESYS^%ydbwebapi(.RESULT,.ARGS)
  ; If we have an error, it means we don't have an index page; ignore and return handlers page instead
  I HTTPERR S HTTPERR=0 K RESULT
  ; If we found an index.html don't return the default
@@ -30,15 +30,15 @@ en(RESULT) ; PEP
  ; return default index.html
  N I F I=1:1 S RESULT(I)=$P($TEXT(HTML+I),";;",2,99) Q:RESULT(I)=""  D
  . I RESULT(I)["<%TABLEDATA%>" D
- .. I $T(^%weburl)="" SET RESULT(I)="<strong>No web request handlers installed.</strong>"
+ .. I $T(^%ydbweburl)="" SET RESULT(I)="<strong>No web request handlers installed.</strong>"
  .. N LINE
  .. N J S J=I ; Replace "<%TABLEDATA%>"
- .. F SEQ=1:1 S LINE=$P($T(URLMAP+SEQ^%weburl),";;",2,99) Q:LINE=""  Q:LINE="zzzzz"  D
+ .. F SEQ=1:1 S LINE=$P($T(URLMAP+SEQ^%ydbweburl),";;",2,99) Q:LINE=""  Q:LINE="zzzzz"  D
  ... N METHOD,URL,RTN,EP
  ... S METHOD=$P(LINE," ",1)
  ... S URL=$P(LINE," ",2)
  ... S EP=$P(LINE," ",3)
- ... S RTN=$P(EP,"^",2),RTN=$$URLENC^%webutils(RTN)
+ ... S RTN=$P(EP,"^",2),RTN=$$URLENC^%ydbwebutils(RTN)
  ... ;
  ... S RESULT(J)="<tr>",J=J+.0001
  ... S RESULT(J)="<td>"_METHOD_"</td>",J=J+.0001

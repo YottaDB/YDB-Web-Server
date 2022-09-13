@@ -1,3 +1,16 @@
+[//]: #  Copyright (c) 2022 YottaDB LLC
+[//]: #
+[//]: #  Licensed under the Apache License, Version 2.0 (the "License");
+[//]: #  you may not use this file except in compliance with the License.
+[//]: #  You may obtain a copy of the License at
+[//]: #
+[//]: #      http://www.apache.org/licenses/LICENSE-2.0
+[//]: #
+[//]: #  Unless required by applicable law or agreed to in writing, software
+[//]: #  distributed under the License is distributed on an "AS IS" BASIS,
+[//]: #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+[//]: #  See the License for the specific language governing permissions and
+[//]: #  limitations under the License.
 # Programmer Documentation
 Part 1: Basic Usage
 
@@ -21,60 +34,60 @@ example using my favorite http command line program, cURL:
 The JSON object returned includes the job number on the M side.
 
 ## Overview of how M Web Services work
-The core of the server is the file ^%web(17.6001). This file ties URL patterns
+The core of the server is the file ^%ydbweb(17.6001). This file ties URL patterns
 to M routines to be executed. The base server comes with three entries. Here's
 the entire global for reference.
 
-	^%web(17.6001,0)="WEB SERVICE URL HANDLER^17.6001S^6^6"
-	^%web(17.6001,1,0)="GET"
-	^%web(17.6001,1,1)="r/{routine?.1""%25"".32AN}"
-	^%web(17.6001,1,2)="R^%webapi"
-	^%web(17.6001,2,0)="PUT"
-	^%web(17.6001,2,1)="r/{routine?.1""%25"".32AN}"
-	^%web(17.6001,2,2)="PR^%webapi"
-	^%web(17.6001,2,"AUTH")="1^3"
-	^%web(17.6001,3,0)="GET"
-	^%web(17.6001,3,1)="error"
-	^%web(17.6001,3,2)="ERR^%webapi"
-	^%web(17.6001,4,0)="GET"
-	^%web(17.6001,4,1)="test/bigoutput"
-	^%web(17.6001,4,2)="bigoutput^%webapi"
-	^%web(17.6001,5,0)="POST"
-	^%web(17.6001,5,1)="rpc/{rpc}"
-	^%web(17.6001,5,2)="RPC^%webapi"
-	^%web(17.6001,5,"AUTH")=1
-	^%web(17.6001,6,0)="POST"
-	^%web(17.6001,6,1)="rpc2/{rpc}"
-	^%web(17.6001,6,2)="rpc2^%webapi"
-	^%web(17.6001,6,"AUTH")=1
-	^%web(17.6001,6,"PARAMS",0)="^17.60012S^4^4"
-	^%web(17.6001,6,"PARAMS",1,0)="U^rpc"
-	^%web(17.6001,6,"PARAMS",2,0)="F^start"
-	^%web(17.6001,6,"PARAMS",3,0)="F^direction"
-	^%web(17.6001,6,"PARAMS",4,0)="B"
-	^%web(17.6001,"B","GET","test/bigoutput","bigoutput^%webapi",4)=""
-	^%web(17.6001,"B","GET","error","ERR^%webapi",3)=""
-	^%web(17.6001,"B","GET","r/{routine?.1""%25"".32AN}","R^%webapi",1)=""
-	^%web(17.6001,"B","POST","rpc/{rpc}","RPC^%webapi",5)=""
-	^%web(17.6001,"B","POST","rpc2/{rpc}","rpc2^%webapi",6)=""
-	^%web(17.6001,"B","PUT","r/{routine?.1""%25"".32AN}","PR^%webapi",2)=""
+	^%ydbweb(17.6001,0)="WEB SERVICE URL HANDLER^17.6001S^6^6"
+	^%ydbweb(17.6001,1,0)="GET"
+	^%ydbweb(17.6001,1,1)="r/{routine?.1""%25"".32AN}"
+	^%ydbweb(17.6001,1,2)="R^%ydbwebapi"
+	^%ydbweb(17.6001,2,0)="PUT"
+	^%ydbweb(17.6001,2,1)="r/{routine?.1""%25"".32AN}"
+	^%ydbweb(17.6001,2,2)="PR^%ydbwebapi"
+	^%ydbweb(17.6001,2,"AUTH")="1^3"
+	^%ydbweb(17.6001,3,0)="GET"
+	^%ydbweb(17.6001,3,1)="error"
+	^%ydbweb(17.6001,3,2)="ERR^%ydbwebapi"
+	^%ydbweb(17.6001,4,0)="GET"
+	^%ydbweb(17.6001,4,1)="test/bigoutput"
+	^%ydbweb(17.6001,4,2)="bigoutput^%ydbwebapi"
+	^%ydbweb(17.6001,5,0)="POST"
+	^%ydbweb(17.6001,5,1)="rpc/{rpc}"
+	^%ydbweb(17.6001,5,2)="RPC^%ydbwebapi"
+	^%ydbweb(17.6001,5,"AUTH")=1
+	^%ydbweb(17.6001,6,0)="POST"
+	^%ydbweb(17.6001,6,1)="rpc2/{rpc}"
+	^%ydbweb(17.6001,6,2)="rpc2^%ydbwebapi"
+	^%ydbweb(17.6001,6,"AUTH")=1
+	^%ydbweb(17.6001,6,"PARAMS",0)="^17.60012S^4^4"
+	^%ydbweb(17.6001,6,"PARAMS",1,0)="U^rpc"
+	^%ydbweb(17.6001,6,"PARAMS",2,0)="F^start"
+	^%ydbweb(17.6001,6,"PARAMS",3,0)="F^direction"
+	^%ydbweb(17.6001,6,"PARAMS",4,0)="B"
+	^%ydbweb(17.6001,"B","GET","test/bigoutput","bigoutput^%ydbwebapi",4)=""
+	^%ydbweb(17.6001,"B","GET","error","ERR^%ydbwebapi",3)=""
+	^%ydbweb(17.6001,"B","GET","r/{routine?.1""%25"".32AN}","R^%ydbwebapi",1)=""
+	^%ydbweb(17.6001,"B","POST","rpc/{rpc}","RPC^%ydbwebapi",5)=""
+	^%ydbweb(17.6001,"B","POST","rpc2/{rpc}","rpc2^%ydbwebapi",6)=""
+	^%ydbweb(17.6001,"B","PUT","r/{routine?.1""%25"".32AN}","PR^%ydbwebapi",2)=""
 
 
 ### HTTP GET
 Let's examine how the server figures out which routine to invoke in those simple examples using HTTP GET. 
 Let's start with the simplest entry:
 
-	^%web(17.6001,"B","GET","test/bigoutput","bigoutput^%webapi",5)=""
+	^%ydbweb(17.6001,"B","GET","test/bigoutput","bigoutput^%ydbwebapi",5)=""
 
 Let's say that your server is listening at <http://localhost:9080>. If you
 type <http://localhost:9080/test/bigoutput>, the server is going to look at the HTTP
 method first, `GET`, then it will try to match the path, `bigoutput`, and from there
 grab the routine name.  In this case, it will just run the routine
-`bigoutput^%webapi`. We will also talk about how to write such a routine later.
+`bigoutput^%ydbwebapi`. We will also talk about how to write such a routine later.
 
 Let's check the second example:
 
-	^%web(17.6001,"B","GET","r/{routine?.1""%25"".32AN}","R^%webapi",1)=""
+	^%ydbweb(17.6001,"B","GET","r/{routine?.1""%25"".32AN}","R^%ydbwebapi",1)=""
 
 In this case, the server will accept GET HTTP requests in the variable format
 `r/routine-name`. That brings us to how we can receive parameters from URLs:

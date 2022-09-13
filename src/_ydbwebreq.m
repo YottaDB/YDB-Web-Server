@@ -1,4 +1,4 @@
-%webreq ;SLC/KCM -- Listen for HTTP requests;Jun 20, 2022@14:46
+%ydbwebreq ;SLC/KCM -- Listen for HTTP requests;Jun 20, 2022@14:46
  ;
  ; Listener Process ---------------------------------------
  ;
@@ -8,7 +8,7 @@ go ; start up REST listener with defaults
  ;
 job(PORT,TLSCONFIG,HTTPLOG,USERPASS,NOGZIP) ; Convenience entry point
  I $L($G(USERPASS))&($G(USERPASS)'[":") W "USERPASS argument is invalid, must be in username:password format!" QUIT
- J start^%webreq(PORT,,$G(TLSCONFIG),$G(HTTPLOG),,$G(USERPASS),$G(NOGZIP)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
+ J start^%ydbwebreq(PORT,,$G(TLSCONFIG),$G(HTTPLOG),,$G(USERPASS),$G(NOGZIP)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
  QUIT
  ;
 start(TCPPORT,DEBUG,TLSCONFIG,HTTPLOG,USERPASS,NOGZIP) ; set up listening for connections
@@ -60,7 +60,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . N Q S Q=""""
  . N ARG S ARG=Q_"SOCKET:"_CHILDSOCK_Q
  . N TCPIO ; Don't pass this guy down
- . N J S J="CHILD:(input="_ARG_":output="_ARG_":error=""/dev/null"":pass:cmd=""CHILD^%webreq -p "_PPID_""")"
+ . N J S J="CHILD:(input="_ARG_":output="_ARG_":error=""/dev/null"":pass:cmd=""CHILD^%ydbwebreq -p "_PPID_""")"
  . J @J
  G LOOP
  QUIT
@@ -88,7 +88,7 @@ DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run 
  ; HTTPERR non-zero if there is an error state
  ;
 CHILD ; handle HTTP requests on this connection
- N $ET S $ET="G ETSOCK^%webreq"
+ N $ET S $ET="G ETSOCK^%ydbwebreq"
  S %WTCP=$GET(TCPIO,$PRINCIPAL) ; TCP Device
  K TCPIO
  ;
@@ -140,7 +140,7 @@ WAIT ; wait for request on this connection
  ;
  ; -- decide how to read body, if any
  U %WTCP:(nodelim) ; GT.M Stream mode
- I $$LOW^%webutils($G(HTTPREQ("header","transfer-encoding")))="chunked" D
+ I $$LOW^%ydbwebutils($G(HTTPREQ("header","transfer-encoding")))="chunked" D
  . D RDCHNKS ; TODO: handle chunked input
  . I HTTPLOG>2 ; log array of chunks
  I $G(HTTPREQ("header","content-length"))>0 D
@@ -148,19 +148,19 @@ WAIT ; wait for request on this connection
  . I HTTPLOG>2 D LOGBODY
  ;
  ; -- build response (map path to routine & call, otherwise 404)   
- S $ETRAP="G ETCODE^%webreq"
+ S $ETRAP="G ETCODE^%ydbwebreq"
  S HTTPERR=0
- D RESPOND^%webrsp
- S $ETRAP="G ETSOCK^%webreq"
+ D RESPOND^%ydbwebrsp
+ S $ETRAP="G ETSOCK^%ydbwebreq"
  ;
  ; -- write out the response (error if HTTPERR>0)
  U %WTCP:(nodelim) ; GT.M Stream mode
- I $G(HTTPERR) D RSPERROR^%webrsp ; switch to error response
+ I $G(HTTPERR) D RSPERROR^%ydbwebrsp ; switch to error response
  I HTTPLOG>2 D LOGRSP
- D SENDATA^%webrsp
+ D SENDATA^%ydbwebrsp
  ;
  ; -- exit on Connection: Close
- I $$LOW^%webutils($G(HTTPREQ("header","connection")))="close" C %WTCP HALT
+ I $$LOW^%ydbwebutils($G(HTTPREQ("header","connection")))="close" C %WTCP HALT
  ;
  ; -- otherwise get ready for the next request
  G NEXT
@@ -195,8 +195,8 @@ ADDHEAD(LINE) ; add header name and header value
  ; expects HTTPREQ to be defined
  D:HTTPLOG>1 LOGHDR(LINE)
  N NAME,VALUE
- S NAME=$$LOW^%webutils($$LTRIM^%webutils($P(LINE,":")))
- S VALUE=$$LTRIM^%webutils($P(LINE,":",2,99))
+ S NAME=$$LOW^%ydbwebutils($$LTRIM^%ydbwebutils($P(LINE,":")))
+ S VALUE=$$LTRIM^%ydbwebutils($P(LINE,":",2,99))
  I LINE'[":" S NAME="",VALUE=LINE
  I '$L(NAME) S NAME=$G(HTTPREQ("header")) ; grab the last name used
  I '$L(NAME) Q  ; no header name so just ignore this line
@@ -212,7 +212,7 @@ ETSOCK ; error trap when handling socket (i.e., client closes connection)
  HALT  ; exit because connection has been closed
  ;
 ETCODE ; error trap when calling out to routines
- S $ETRAP="G ETBAIL^%webreq"
+ S $ETRAP="G ETBAIL^%ydbwebreq"
  I $TLEVEL TROLLBACK ; abandon any transactions
  L                   ; release any locks
  i $d(%webcrash2) s $ec=",U-test-error-trap,"
@@ -225,10 +225,10 @@ ETCODE ; error trap when calling out to routines
  S ERRARR("reason")=$ECODE
  S ERRARR("place")=$STACK($STACK(-1),"PLACE")
  S ERRARR("mcode")=$STACK($STACK(-1),"MCODE")
- D SETERROR^%webutils(501,,.ERRARR) ; sets HTTPERR
+ D SETERROR^%ydbwebutils(501,,.ERRARR) ; sets HTTPERR
  D LOGERR
- D RSPERROR^%webrsp  ; switch to error response
- D SENDATA^%webrsp
+ D RSPERROR^%ydbwebrsp  ; switch to error response
+ D SENDATA^%ydbwebrsp
  ; This next line will 'unwind' the stack and got back to listening
  ; for the next HTTP request (goto NEXT).
  S $ETRAP="Q:$ESTACK&$QUIT 0 Q:$ESTACK  S $ECODE="""" G NEXT",$ECODE=",U-UNWIND,"
