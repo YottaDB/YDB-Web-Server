@@ -16,7 +16,6 @@ SHUTDOWN ;
  open "p":(command="$gtm_dist/mupip stop "_myJob)::"pipe"
  use "p" r x:1
  close "p"
- w !,x,!
  ;
  kill myJob
  quit
@@ -435,6 +434,34 @@ tpost ; @TEST simple post
  d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/test/post",payload,"application/json")
  d &libcurl.cleanup
  do CHKTF^%ut(return[random)
+ quit
+ ;
+tTLS ; @TEST Start with TLS and test
+ new cryptfile set cryptfile=$zsearch("/mwebserver/certs/ydbgui.ydbcrypt",-1)
+ if cryptfile="" do fail^%ut("TLS is not set-up file") quit
+ ;
+ new cryptconfig set cryptconfig=$ZTRNLNM("ydb_crypt_config")
+ if cryptconfig="" do fail^%ut("TLS is not set-up env 1") quit
+ ;
+ new ydbpasswd set ydbpasswd=$ZTRNLNM("ydb_tls_passwd_ydbgui")
+ if ydbpasswd="" do fail^%ut("TLS is not set-up env 2") quit
+ ;
+ j start^%ydbwebreq(55730,0,"ydbgui")
+ h .1
+ new tlsjob s tlsjob=$zjob
+ ;
+ d &libcurl.init
+ d &libcurl.serverCA("/mwebserver/certs/ydbgui.pem")
+ ; MUST use localhost here as certificate has a domain name of localhost
+ ; Took me a while to find that one out
+ d &libcurl.do(.httpStatus,.return,"GET","https://localhost:55730/ping")
+ d &libcurl.cleanup
+ d CHKEQ^%ut(httpStatus,200)
+ ;
+ open "p":(command="$gtm_dist/mupip stop "_tlsjob)::"pipe"
+ use "p" r x:1
+ close "p"
+ d CHKEQ^%ut($ZCLOSE,0)
  quit
  ;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.

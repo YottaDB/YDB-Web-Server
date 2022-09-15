@@ -16,13 +16,21 @@
 set -e
 set -o pipefail
 
-if [ "$1" = "server" ]; then
+export USER=root # needed for maskpass
+export ydb_tls_passwd_ydbgui="$(echo ydbgui | /opt/yottadb/current/plugin/gtmcrypt/maskpass | cut -d ":" -f2 | tr -d '[:space:]')"
+
+if   [ "$1" = "server" ]; then
 	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080)'
+elif [ "$1" = "server-tls" ]; then
+	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080,0,"ydbgui")'
 elif [ "$1" = "bash" ] || [ "$1" = "shell" ]; then
 	exec /bin/bash
 elif [ "$1" = "debug" ]; then
 	export ydb_zstep='n oldio s oldio=$io u 0 zp @$zpos b  u oldio'
-	exec /opt/yottadb/current/yottadb -r %XCMD 'zb start^%ydbwebreq do start^%ydbwebreq(9080)'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'zb start^%ydbwebreq do start^%ydbwebreq(9080,1)'
+elif [ "$1" = "debug-tls" ]; then
+	export ydb_zstep='n oldio s oldio=$io u 0 zp @$zpos b  u oldio'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'zb TLS^%ydbwebreq do start^%ydbwebreq(9080,1,"ydbgui")'
 else # "$1" = "test"
 	/opt/yottadb/current/yottadb -r ^%ydbwebtest | tee test_output.txt
 

@@ -17,7 +17,6 @@ start(TCPPORT,DEBUG,TLSCONFIG,HTTPLOG,USERPASS,NOGZIP) ; set up listening for co
  ; DEBUG is so that we run our server in the foreground.
  ; You can place breakpoints at CHILD+1 or anywhere else.
  ;
- WRITE "Starting Server at port "_TCPPORT,!
  ; Enable CTRL-C
  U $p:(ctrap=$char(3):exception="use $p write ""Caught Ctrl-C, stopping..."",! HALT")
  ;
@@ -28,6 +27,10 @@ start(TCPPORT,DEBUG,TLSCONFIG,HTTPLOG,USERPASS,NOGZIP) ; set up listening for co
  S HTTPLOG=$G(HTTPLOG,1)
  S USERPASS=$G(USERPASS)
  S NOGZIP=$G(NOGZIP,0)
+ ;
+ WRITE "Starting Server at port "_TCPPORT," "
+ WRITE:TLSCONFIG'="" "using TLS configuration "_TLSCONFIG
+ WRITE !
  ;
  ; Device ID
  S TCPIO="SCK$"_TCPPORT
@@ -101,10 +104,14 @@ CHILD ; handle HTTP requests on this connection
  ;
 TLS ; Turn on TLS?
  I TLSCONFIG]"" W /TLS("server",1,TLSCONFIG)
- N D,K,T
- ; TODO: Put that in logging
  ; put a break point here to debug TLS
+ N D,K,T
  S D=$DEVICE,K=$KEY,T=$TEST
+ I HTTPLOG>0 D
+ . D LOGREQ("TLS Connection Data: ")
+ . D LOGREQ("            $DEVICE: "_D)
+ . D LOGREQ("               $KEY: "_K)
+ . D LOGREQ("              $TEST: "_T)
  ; U 0
  ; W !
  ; W "$DEVICE: "_D,!

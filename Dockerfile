@@ -14,20 +14,32 @@
 FROM yottadb/yottadb-base:latest-master
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y libcurl4-openssl-dev git make gcc
+RUN apt-get update && apt-get install -y libcurl4-openssl-dev git make gcc openssl libssl-dev libconfig-dev libgcrypt-dev libgpgme-dev
+
+ENV ydb_dist "/opt/yottadb/current"
+ENV gtm_dist "/opt/yottadb/current"
+ENV ydb_chset "utf-8"
+ENV ydb_xc_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.xc"
+RUN mkdir -p /mwebserver/o
+ENV ydb_routines "/mwebserver/o*(/mwebserver/r) /opt/yottadb/current/utf8/libyottadbutil.so"
+ENV ydb_icu_version "66"
 
 # Install cURL plugin
 RUN git clone https://github.com/shabiel/fis-gtm-plugins.git
-ENV LD_LIBRARY_PATH /opt/yottadb/current
-ENV ydb_chset utf-8
-RUN cd fis-gtm-plugins/libcurl && \
-    . /opt/yottadb/current/ydb_env_set && \
-    make install
+RUN cd fis-gtm-plugins/libcurl && make install
 
-ENV ydb_xc_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.xc"
-ENV ydb_routines "/data/r1.35_x86_64/o*(/mwebserver/r) /opt/yottadb/current/utf8/libyottadbutil.so"
-ENV ydb_icu_version "66"
+# Install Encryption Plugin
+RUN git clone https://gitlab.com/YottaDB/Util/YDBEncrypt
+RUN cd YDBEncrypt && make install
+
 EXPOSE 9080
+
+RUN mkdir -p /mwebserver/certs
+RUN openssl genrsa -aes128 -passout pass:ydbgui -out /mwebserver/certs/ydbgui.key 2048
+RUN openssl req -new -key /mwebserver/certs/ydbgui.key -passin pass:ydbgui -subj '/C=US/ST=Pennsylvania/L=Malvern/CN=localhost' -out /mwebserver/certs/ydbgui.csr
+RUN openssl req -x509 -days 365 -sha256 -in /mwebserver/certs/ydbgui.csr -key /mwebserver/certs/ydbgui.key -passin pass:ydbgui -out /mwebserver/certs/ydbgui.pem
+COPY ci/ydbgui.ydbcrypt /mwebserver/certs/
+ENV ydb_crypt_config /mwebserver/certs/ydbgui.ydbcrypt
 
 # Copy Test script
 COPY ci/run_test.sh /mwebserver/run_test.sh
