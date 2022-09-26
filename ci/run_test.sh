@@ -18,6 +18,9 @@ set -o pipefail
 
 export USER=root # needed for maskpass
 export ydb_tls_passwd_ydbgui="$(echo ydbgui | /opt/yottadb/current/plugin/gtmcrypt/maskpass | cut -d ":" -f2 | tr -d '[:space:]')"
+export ydb_tls_passwd_client="$(echo ydbgui | /opt/yottadb/current/plugin/gtmcrypt/maskpass | cut -d ":" -f2 | tr -d '[:space:]')"
+#echo "export ydb_tls_passwd_client=$ydb_tls_passwd_client" >> $HOME/.bashrc
+echo "export PATH=/opt/yottadb/current/:$PATH" >> $HOME/.bashrc
 
 if   [ "$1" = "server" ]; then
 	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080)'

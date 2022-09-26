@@ -14,14 +14,14 @@
 FROM yottadb/yottadb-base:latest-master
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y libcurl4-openssl-dev git make gcc openssl libssl-dev libconfig-dev libgcrypt-dev libgpgme-dev
+RUN apt-get update && apt-get install -y libcurl4-openssl-dev git make cmake pkg-config gcc openssl libssl-dev libconfig-dev libgcrypt-dev libgpgme-dev libicu-dev
 
 ENV ydb_dist "/opt/yottadb/current"
 ENV gtm_dist "/opt/yottadb/current"
 ENV ydb_chset "utf-8"
 ENV ydb_xc_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.xc"
-RUN mkdir -p /mwebserver/o
-ENV ydb_routines "/mwebserver/o*(/mwebserver/r) /opt/yottadb/current/utf8/libyottadbutil.so"
+RUN mkdir -p /mwebserver/o /mwebserver/r
+ENV ydb_routines "/mwebserver/o*(/mwebserver/r) /opt/yottadb/current/utf8/libyottadbutil.so /opt/yottadb/current/plugin/o/utf8/_ydbmwebserver.so"
 ENV ydb_icu_version "66"
 
 # Install cURL plugin
@@ -45,6 +45,11 @@ ENV ydb_crypt_config /mwebserver/certs/ydbgui.ydbcrypt
 COPY ci/run_test.sh /mwebserver/run_test.sh
 
 # Install M-Web-Server
-COPY ./src /mwebserver/r
+COPY src/ src/
+COPY CMakeLists.txt .
+RUN mkdir build && cd build && cmake .. && make install
+
+# Copy these files which are not installed by default
+COPY src/_ydbwebtest.m src/_ut.m src/_ut1.m src/_ydbwebjsonDecodeTest.m src/_ydbwebjsonEncodeTest.m src/_ydbwebjsonTestData1.m src/_ydbwebjsonTestData2.m src/_ydbweburl.m /mwebserver/r/
 
 ENTRYPOINT ["/mwebserver/run_test.sh"]

@@ -18,4 +18,7 @@ tls: {
     cert: "/mwebserver/certs/ydbgui.pem";
     key:  "/mwebserver/certs/ydbgui.key";
   };
+  client: {
+    CAfile: "/mwebserver/certs/ydbgui.pem";
+  };
 };

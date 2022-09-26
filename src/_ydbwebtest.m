@@ -13,10 +13,6 @@ STARTUP ;
  quit
  ;
 SHUTDOWN ;
- open "p":(command="$gtm_dist/mupip stop "_myJob)::"pipe"
- use "p" r x:1
- close "p"
- ;
  kill myJob
  quit
  ;
@@ -458,14 +454,20 @@ tTLS ; @TEST Start with TLS and test
  d &libcurl.cleanup
  d CHKEQ^%ut(httpStatus,200)
  ;
- open "p":(command="$gtm_dist/mupip stop "_tlsjob)::"pipe"
- use "p" r x:1
- close "p"
- d CHKEQ^%ut($ZCLOSE,0)
+ new options 
+ set options("port")=55730
+ set options("tls")=1
+ set options("tlsconfig")="client"
+ do stop^%ydbwebreq(.options)
+ hang .1
+ do eq^%ut($zgetjpi(tlsjob,"ISPROCALIVE"),0)
  quit
  ;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
- do stop^%ydbwebreq
+ new options set options("port")=55728
+ do stop^%ydbwebreq(.options)
+ hang .1
+ do eq^%ut($zgetjpi(myJob,"ISPROCALIVE"),0)
  quit
  ;
 XTROU ;

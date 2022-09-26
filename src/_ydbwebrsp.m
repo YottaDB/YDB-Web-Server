@@ -79,12 +79,16 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  ;
  ;
 MATCHR(ROUTINE,ARGS) ; Match against _ydbweburl.m
- I $T(^%ydbweburl)="" S ROUTINE="" QUIT
- ;
  N METHOD S METHOD=HTTPREQ("method")
  I METHOD="HEAD" S METHOD="GET" ; just for here
  N PATH S PATH=HTTPREQ("path")
  S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
+ ;
+ ; Special processing for ping. It should be always available
+ I METHOD="GET",PATH="ping" S ROUTINE="ping^%ydbwebapi" QUIT
+ ;
+ I $T(^%ydbweburl)="" S ROUTINE="" QUIT
+ ;
  N SEQ,PATMETHOD
  N DONE S DONE=0
  F SEQ=1:1 S PATTERN=$P($T(URLMAP+SEQ^%ydbweburl),";;",2,99) Q:PATTERN=""  Q:PATTERN="zzzzz"  D  Q:DONE

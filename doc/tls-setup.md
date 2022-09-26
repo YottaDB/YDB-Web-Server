@@ -34,15 +34,20 @@ mkdir certs
 mv mycert.* certs/
 
 # Create a file (name doesn't matter) called ydbcrypt_config.libconfig with the
-# following contents. Note the section called dev. This can be called anything.
+# following contents. Note the section called server. This can be called anything.
 # It lets you put a pair of cert/key for each environment you need to configure.
+# Note the "client" section. This allows you to use the self-signed certificate
+# by telling YottaDB about it.
 cat ydbcrypt_config.libconfig
 tls: {
-  dev: {
+  server: {
     format: "PEM";
     cert: "/data/certs/mycert.pem";
     key:  "/data/certs/mycert.key";
-  }
+  };
+  client: {
+    CAfile: "/data/certs/mycert.pem";
+  };
 }
 
 # In your file that sets up the YottaDB environment, add set the env variable
@@ -53,18 +58,31 @@ export ydbcrypt_config="/data/ydbcrypt_config.libconfig"
 $ydb_dist/plugin/ydbcrypt/maskpass <<< 'monkey1234' | cut -d ":" -f2 | tr -d ' '
 
 # In your environment file, ydbtls_passwd_{section name} to be that hash. For me, it's:
-export ydbtls_passwd_dev="30A22B54B46618B4361F"
+export ydbtls_passwd_server="30A22B54B46618B4361F"
 
-# Run the server like this, substituting the {section name} appropriately. here it is dev
-$ydb_dist/mumps -r %XCMD 'do start^%ydbwebreq(9080,0,"dev")'
+# Run the server like this, substituting the {section name} appropriately. here it is server
+$ydb_dist/mumps -r %XCMD 'do start^%ydbwebreq(9080,0,"server")'
 
 # Test the server like this (cacert to supply curl with the self-signed Certificate)
 curl --cacert /data/certs/mycert.pem https://localhost:9080
+
+# From the M side, you can connect to the server like this. The self-signed cert is known to M
+# via the client.CAfile in the section above.
+set port=9080
+open "porttest":(connect="127.0.0.1:"_port_":TCP":delim=$char(13,10):attach="client"):0:"SOCKET"
+write /tls("client",,"client")
+set d=$device ; check d to see if it is positive--in that case, TLS failed.
+write "GET /ping HTTP/1.1"_$char(13,10)
+write "Host: localhost:"_options("port")_$char(13,10)
+write "User-Agent: "_$zposition_$char(13,10)
+write "Accept: */*"_$char(13,10)_$char(13,10)
+new httpstatus read httpstatus
+; etc.
 ```
 
 Sample Log output:
 ```
-Starting Server at port 9080 using TLS configuration dev
+Starting Server at port 9080 using TLS configuration server
 ::ffff:172.17.0.1 - - [15/SEP/2022 01:19:52 PM] Starting Child at PID 13 from parent 1
 ::ffff:172.17.0.1 - - [15/SEP/2022 01:19:52 PM] TLS Connection Data:
 ::ffff:172.17.0.1 - - [15/SEP/2022 01:19:52 PM]             $DEVICE: 1,Connection reset by peer

@@ -21,7 +21,7 @@ include(FetchContent)
 # The tag is fixed at that point to ensure reproducible builds.
 FetchContent_Declare(YDBCMake
 	GIT_REPOSITORY	https://gitlab.com/YottaDB/Tools/YDBCMake.git
-	GIT_TAG		ec3ed1781a8a9ebeee67cd524029da5176183e8b
+	GIT_TAG		50e7f4a2484b1a8649d6ef1c4a17e626806c886b
 )
 # The following sets ydbcmake_SOURCE_DIR
 FetchContent_MakeAvailable(YDBCMake)
@@ -35,14 +35,14 @@ find_package(YOTTADB REQUIRED)
 
 # Sources
 set(source_files
-  src/_webapi.m
-  src/_webhome.m
-  src/_webjson.m
-  src/_webjsonDecode.m
-  src/_webjsonEncode.m
-  src/_webreq.m
-  src/_webrsp.m
-  src/_webutils.m
+  src/_ydbwebapi.m
+  src/_ydbwebhome.m
+  src/_ydbwebjson.m
+  src/_ydbwebjsonDecode.m
+  src/_ydbwebjsonEncode.m
+  src/_ydbwebreq.m
+  src/_ydbwebrsp.m
+  src/_ydbwebutils.m
 )
 
 add_ydb_library(_ydbmwebserver SOURCES ${source_files})
