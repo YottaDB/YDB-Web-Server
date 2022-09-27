@@ -16,6 +16,13 @@ SHUTDOWN ;
  kill myJob
  quit
  ;
+tstartagain ; @TEST Start again on the same port
+ job start^%ydbwebreq(55728)
+ set myJob=$zjob
+ hang .1
+ do eq^%ut($zgetjpi(myJob,"ISPROCALIVE"),0)
+ quit
+ ;
 tdebug ; @TEST Debug Entry Point
  job start^%ydbwebreq(55729,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
  h .1

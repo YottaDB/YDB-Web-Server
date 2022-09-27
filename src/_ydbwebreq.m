@@ -36,7 +36,7 @@ start(TCPPORT,DEBUG,TLSCONFIG,HTTPLOG,USERPASS,NOGZIP) ; set up listening for co
  S TCPIO="SCK$"_TCPPORT
  ;
  ; Open Code
- O TCPIO:(LISTEN=TCPPORT_":TCP":delim=$C(13,10):attach="server"):15:"socket" E  U 0 W !,"error cannot open port "_TCPPORT Q
+ O TCPIO:(LISTEN=TCPPORT_":TCP":delim=$C(13,10):attach="server"):0:"socket" E  U 0 W "Error: Cannot open port "_TCPPORT,! Q
  ;
  U TCPIO:(CHSET="M")
  ;
