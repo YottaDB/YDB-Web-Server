@@ -114,9 +114,6 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
  O PATH:(REWIND:READONLY:FIXED:CHSET="M")
  ;
- ; Set content-cache value; defaults to one week.
- set RESULT("cache")=604800
- ;
  ; Get mime type
  ; This isn't complete, by any means; it just grabs the most likely types to be
  ; found on an M Web Server. A few common Microsoft types are supported, but
@@ -171,6 +168,12 @@ FILESYS(RESULT,ARGS) ; Handle filesystem/*
  N C S C=1
  N X F  R X#4079:0 S RESULT(C)=X,C=C+1 Q:$ZEOF
  C PATH
+ ;
+ ; Create ETag
+ N ETAG S ETAG=""
+ F C=0:0 S C=$O(RESULT(C)) Q:'C  S ETAG=$ZYHASH(ETAG_RESULT(C))
+ set RESULT("ETag")=ETAG
+ ; 
  QUIT
  ;
 FILESYSE ; 500

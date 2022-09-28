@@ -22,10 +22,17 @@ export ydb_tls_passwd_client="$(echo ydbgui | /opt/yottadb/current/plugin/gtmcry
 #echo "export ydb_tls_passwd_client=$ydb_tls_passwd_client" >> $HOME/.bashrc
 echo "export PATH=/opt/yottadb/current/:$PATH" >> $HOME/.bashrc
 
+# HTTPLOG optional paramter
+if [ -n "$2" ]; then
+	log=$2
+else
+	log=1
+fi
+
 if   [ "$1" = "server" ]; then
-	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080)'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080,0,"",'$log')'
 elif [ "$1" = "server-tls" ]; then
-	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080,0,"ydbgui")'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080,0,"ydbgui",'$log')'
 elif [ "$1" = "bash" ] || [ "$1" = "shell" ]; then
 	exec /bin/bash
 elif [ "$1" = "debug" ]; then
@@ -34,6 +41,19 @@ elif [ "$1" = "debug" ]; then
 elif [ "$1" = "debug-tls" ]; then
 	export ydb_zstep='n oldio s oldio=$io u 0 zp @$zpos b  u oldio'
 	exec /opt/yottadb/current/yottadb -r %XCMD 'zb TLS^%ydbwebreq do start^%ydbwebreq(9080,1,"ydbgui")'
+elif [ "$1" = "ydbgui" ]; then
+	git clone https://gitlab.com/YottaDB/UI/YDBGUI.git
+	cd YDBGUI
+	sed -i 's/_weburl/_ydbweburl/g' CMakeLists.txt
+	sed -i 's/webjson/ydbwebjson/g' routines/*
+	mv routines/_weburl.m routines/_ydbweburl.m
+	mkdir build
+	cd build
+	cmake .. && make _ydbguiutf8
+	export ydb_routines="$(readlink -f utf8/_ydbgui.so) $ydb_routines"
+	source /opt/yottadb/current/ydb_env_set
+	cd ../wwwroot
+	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080,0,"",'$log')'
 else # "$1" = "test"
 	/opt/yottadb/current/yottadb -r ^%ydbwebtest | tee test_output.txt
 

@@ -128,18 +128,22 @@ SENDATA ; write out the data as an HTTP response
  . F  S X=$Q(@X) Q:'$L(X)  Q:$NA(@X,L)'=ARY  D W(@X)
  . D FLUSH
  . K @ARY
+ ;
  N SIZE,RSPTYPE,PREAMBLE,START,LIMIT
+ N RSPLINE S RSPLINE=$$RSPLINE()
  S RSPTYPE=$S($E($G(HTTPRSP))'="^":1,$D(HTTPRSP("pageable")):3,1:2)
- I RSPTYPE=1 S SIZE=$$VARSIZE^%ydbwebutils(.HTTPRSP)
- I RSPTYPE=2 S SIZE=$$REFSIZE^%ydbwebutils(.HTTPRSP)
+ I RSPLINE[304 S SIZE=0 ; Not modified. Don't send data.
+ E  D
+ . I RSPTYPE=1 S SIZE=$$VARSIZE^%ydbwebutils(.HTTPRSP)
+ . I RSPTYPE=2 S SIZE=$$REFSIZE^%ydbwebutils(.HTTPRSP)
  ;
  ; TODO: Handle 201 responses differently (change simple OK to created)
  ;
- D W($$RSPLINE()_$C(13,10)) ; Status Line (200, 404, etc)
+ D W(RSPLINE_$C(13,10)) ; Status Line (200, 404, etc)
  D W("Date: "_$$GMT^%ydbwebutils_$C(13,10)) ; RFC 1123 date
  I $D(HTTPREQ("location")) D W("Location: "_HTTPREQ("location")_$C(13,10))  ; Response Location
  I $D(HTTPRSP("auth")) D W("WWW-Authenticate: "_HTTPRSP("auth")_$C(13,10)) K HTTPRSP("auth") ; Authentication
- I $D(HTTPRSP("cache")) D W("Cache-Control: max-age="_HTTPRSP("cache")_$C(13,10)) K HTTPRSP("cache") ; Browser caching
+ I $D(HTTPRSP("ETag")) D W("ETag: "_HTTPRSP("ETag")_$C(13,10)) K HTTPRSP("ETag") ; ETag
  I $D(HTTPRSP("mime")) D  ; Stack $TEST for the ELSE below
  . D W("Content-Type: "_HTTPRSP("mime")_$C(13,10)) K HTTPRSP("mime") ; Mime-type
  E  D W("Content-Type: application/json; charset=utf-8"_$C(13,10))
@@ -244,7 +248,8 @@ RSPERROR ; set response to be an error response
  D encode^%ydbwebjson($NAME(HTTPERR),$NAME(HTTPRSP))
  Q
 RSPLINE() ; writes out a response line based on HTTPERR
- ; VEN/SMH: TODO: There ought to be a simpler way to do this!!!
+ I $D(HTTPREQ("header","if-none-match")),$D(HTTPRSP("ETag")) N OK S OK=0 D  Q:OK "HTTP/1.1 304 Not Modified"
+ . I HTTPREQ("header","if-none-match")=HTTPRSP("ETag") S OK=1
  I '$G(HTTPERR),'$D(HTTPREQ("location")) Q "HTTP/1.1 200 OK"
  I '$G(HTTPERR),$D(HTTPREQ("location")) Q "HTTP/1.1 201 Created"
  I $G(HTTPERR)=400 Q "HTTP/1.1 400 Bad Request"

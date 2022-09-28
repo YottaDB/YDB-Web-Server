@@ -25,6 +25,8 @@ Several ways to use this:
 ```
 # Run Server on port 9080
 docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws server
+# Run Server on port 9080 with level 2 verbosity
+docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws server 2
 # Run Tests
 docker run -v $PWD/src:/mwebserver/r --rm mws tests
 # Run Bash
@@ -35,6 +37,8 @@ docker run --rm -it -p 9080:9080 mws debug
 docker run -p 9080:9080 -v $PWD/src:/mwebserver/r --rm -it mws server-tls
 # Run Debug TLS on port 9080:
 docker run -p 9080:9080 -v $PWD/src:/mwebserver/r --rm -it mws debug-tls
+# Run YDBGUI
+docker run -p 9080:9080 -v $PWD/src:/mwebserver/r --rm -it mws ydbgui
 ```
 
 At the same time, you can modify the source code in the `src` directory and see
