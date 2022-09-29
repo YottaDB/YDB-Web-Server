@@ -42,7 +42,7 @@ thome ; @TEST Test Home Page
  ;
 tgetr ; @TEST Test Get Handler Routine
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/%25ydbwebapi")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/r/%25ydbwebapi")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return["YottaDB LLC")
  quit
@@ -53,11 +53,11 @@ tputr ; @TEST Put a Routine
  n payload s payload="KBANTESTWEB ;"_random_$C(13,10)_" W ""HELLO WORLD"",!"_$C(13,10)_" QUIT"
  d &libcurl.init
  d &libcurl.auth("Basic",$tr("foo:boo",";",":"))
- d &libcurl.do(.httpStatus,.return,"PUT","http://127.0.0.1:55728/r/KBANTESTWEB",payload,"application/text",1,.headers)
+ d &libcurl.do(.httpStatus,.return,"PUT","http://127.0.0.1:55728/test/r/KBANTESTWEB",payload,"application/text",1,.headers)
  do CHKEQ^%ut(httpStatus,201)
  d &libcurl.cleanup
  k httpStatus,return
- d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/KBANTESTWEB")
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/r/KBANTESTWEB")
  do CHKTF^%ut(return[random)
  quit
  ;
@@ -116,7 +116,7 @@ tgzip ; @TEST Test gzip encoding
  n httpStatus,return,headers
  d &libcurl.init
  d &libcurl.addHeader("Accept-Encoding: gzip")
- n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/r/%25ydbwebapi",,,1,.headers)
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/r/%25ydbwebapi",,,1,.headers)
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(headers["Content-Encoding: gzip")
  view "nobadchar"
@@ -135,7 +135,7 @@ tnogzipflag ; @TEST Test nogzip flag
  n httpStatus,return,headers
  d &libcurl.init
  d &libcurl.addHeader("Accept-Encoding: gzip") ; This must be sent to properly test as the server is smart and if we don't send that we support gzip it won't gzip
- n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55732/r/%25ydbwebapi",,,1,.headers)
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55732/test/r/%25ydbwebapi",,,1,.headers)
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(headers'["Content-Encoding: gzip")
  do CHKTF^%ut(return["ydbwebapi ; OSE/SMH - Infrastructure web services hooks")
@@ -283,7 +283,7 @@ tLog3 ; @TEST Set HTTPLOG to 3
  else  D FAIL^%ut("Failed to connect to server") quit
  close "sock"
  n httpStatus,return,x
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/r/%25ydbwebapi")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/test/r/%25ydbwebapi")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return["YottaDB LLC")
  open "/tmp/sim-stdout3":(stream:readonly:rewind:delimiter=$char(10))

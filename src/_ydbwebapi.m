@@ -1,6 +1,6 @@
 %ydbwebapi ; OSE/SMH - Infrastructure web services hooks;Jun 20, 2022@14:45
  ;
-R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
+R(RESULT,ARGS) ; GET /test/r/{routine} Mumps Routine
  S RESULT("mime")="text/plain; charset=utf-8"
  N RTN S RTN=$G(ARGS("routine"))
  N OFF,I
@@ -8,25 +8,22 @@ R(RESULT,ARGS) ; [Public] GET /r/{routine} Mumps Routine
  E  K RESULT("mime") D setError^%ydbwebutils(404,"Routine not found")
  QUIT
  ;
-PR(ARGS,BODY,RESULT) ; [Public] PUT /r/{routine} Mumps Routine
+PR(ARGS,BODY,RESULT) ; PUT /test/r/{routine} Mumps Routine
  S HTTPRSP("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  N PARSED ; Parsed array which stores each line on a separate node.
  D PARSE10^%ydbwebutils(.BODY,.PARSED) ; Parser
- N DIE,XCN S DIE="PARSED(",XCN=0 D SAVE(ARGS("routine"))
- Q "/r/"_ARGS("routine")
- ;
-SAVE(RN) ; [Private] Save a routine
+ N DIE,XCN S DIE="PARSED(",XCN=0
+ N RN S RN=ARGS("routine")
  Q:$E(RN,1,4)'="KBAN"  ; Just for this server, don't do this.
  N %,%F,%I,%N,SP,$ETRAP
  S $ETRAP="S $ECODE="""" Q"
  S %I=$I,SP=" ",%F=$P($$SRCDIR^%RSEL," ")_"/"_$TR(RN,"%","_")_".m"
  O %F:newversion U %F
  F  S XCN=$O(@(DIE_XCN_")")) Q:XCN'>0  S %=@(DIE_XCN_")") Q:$E(%,1)="$"  I $E(%)'=";" W %,!
- C %F ;S %N=$$NULL
+ C %F
  ZLINK RN
- ;C %N
  U %I
- Q
+ Q "/r/"_ARGS("routine")
  ;
 err(RESULT,ARGS) ; GET /test/error Force M Error
  I $G(ARGS("foo"))="crash2" S %webcrash2=1 ; crash the error trap
@@ -53,22 +50,22 @@ gloreturn(result,args) ; GET /test/gloreturn - Used by Unit Tests to ensure Glob
  s result("mime")="text/plain; charset=utf-8" ; type of data to send browser
  quit
  ;
-utf8get(res,params) ; /test/utf8/get
+utf8get(res,params) ; GET /test/utf8/get
  set res=params("foo")
  set res("mime")="text/plain; charset=UTF-8"
  quit
  ;
-utf8post(params,body,res) ; /test/utf8/post
+utf8post(params,body,res) ; POST /test/utf8/post
  new output
  do decode^%ydbwebjson($na(body),$na(output))
  set res(1)=$extract(params("foo"),1,3)_$C(13,10)
  set res(2)=$get(output("直接"))
  quit "test/utf8/post?foo="_params("foo")
  ;
-ping(RESULT,ARGS) ; writes out a ping response
+ping(RESULT,ARGS) ; GET /ping writes out a ping response
  S RESULT="{""self"": """_$J_""", ""server"": """_PPID_"""}"
  Q
-xml(RESULT,ARGS) ; text XML
+xml(RESULT,ARGS) ; GET /test/xml XML sample
  S HTTPRSP("mime")="text/xml"
  S RESULT(1)="<?xml version=""1.0"" encoding=""UTF-8""?>"
  S RESULT(2)="<note>"
@@ -79,7 +76,7 @@ xml(RESULT,ARGS) ; text XML
  S RESULT(7)="</note>"
  QUIT
  ;
-customerr(r,a) ; custom error
+customerr(r,a) ; GET /test/customerror custom error sample
  n errarr
  s errarr("resourceType")="OperationOutcome"
  s errarr("issue",1,"severity")="error"
@@ -88,11 +85,11 @@ customerr(r,a) ; custom error
  d customError^%ydbwebutils(400,.errarr)
  quit
  ;
-empty(r,a) ; Empty. Used For Unit Tests
+empty(r,a) ; GET /test/empty. Used For Unit Tests
  s r=""
  QUIT
  ;
-posttest(ARGS,BODY,RESULT) ; Simple test for post, handles /test/post
+posttest(ARGS,BODY,RESULT) ; POST /test/post Simple test for post
  N PARAMS ; Parsed array which stores each line on a separate node.
  D decode^%ydbwebjson($NA(BODY),$NA(PARAMS),$NA(%WERR))
  I $D(%WERR) D SETERROR^%ydbwebutils("400","Input parameters not correct") QUIT ""
@@ -101,14 +98,14 @@ posttest(ARGS,BODY,RESULT) ; Simple test for post, handles /test/post
  S RESULT="/path/"_PARAMS("random")_"/1" ; Stored URL
  Q RESULT
 
-FILESYS(RESULT,ARGS) ; Handle filesystem/*
+FILESYS(RESULT,ARGS) ; Handle reads from File system.
  I '$D(ARGS)&$D(PATHSEG) S ARGS("*")=PATHSEG
  N PATH
  ;
- ; Ok, get the actual path
+ ; get the actual path
  S PATH=$ZDIRECTORY_ARGS("*")
  ;
- ; GT.M errors out on FNF; Need timeout and else.
+ ; GT.M errors out on file no found
  N $ET S $ET="G FILESYSE"
  ;
  ; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.

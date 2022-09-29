@@ -5,8 +5,8 @@
  ;
 URLMAP ;
  ;;GET ping ping^%ydbwebapi
- ;;GET /r/{routine?.1"%25".32AN} R^%ydbwebapi
- ;;PUT /r/{routine?.1"%25".32AN} PR^%ydbwebapi
+ ;;GET test/r/{routine?.1"%25".32AN} R^%ydbwebapi
+ ;;PUT test/r/{routine?.1"%25".32AN} PR^%ydbwebapi
  ;;GET /test/error err^%ydbwebapi
  ;;GET test/bigoutput bigoutput^%ydbwebapi
  ;;GET test/gloreturn gloreturn^%ydbwebapi
