@@ -2,33 +2,30 @@
  ;
  ; Listener Process ---------------------------------------
  ;
-go ; start up REST listener with defaults
- D job(9080)
- QUIT
- ;
-job(PORT,TLSCONFIG,HTTPLOG,USERPASS,NOGZIP) ; Convenience entry point
- I $L($G(USERPASS))&($G(USERPASS)'[":") W "USERPASS argument is invalid, must be in username:password format!" QUIT
- J start^%ydbwebreq(PORT,,$G(TLSCONFIG),$G(HTTPLOG),,$G(USERPASS),$G(NOGZIP)):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5  ; no in and out files please.
- QUIT
- ;
-start(TCPPORT,DEBUG,TLSCONFIG,HTTPLOG,USERPASS,NOGZIP) ; set up listening for connections
- ; I hope TCPPORT needs no explanations.
- ;
+start(options) ; set up listening for connections
+ if '$data(options)#2 do cmdline(.options)
+ if '$data(options("port"))      set options("port")=9080    ; --port nnnn
  ; DEBUG is so that we run our server in the foreground.
  ; You can place breakpoints at CHILD+1 or anywhere else.
+ if '$data(options("debug"))     set options("debug")=0      ; --debug
+ if '$data(options("tlsconfig")) set options("tlsconfig")="" ; --tlsconfig myconfig
+ if '$data(options("log"))       set options("log")=1        ; --log n
+ if '$data(options("userpass"))  set options("userpass")=""  ; --userpass xxx:yyy
+ if '$data(options("nogzip"))    set options("nogzip")=0     ; --nogzip
+ ;
  ;
  ; Enable CTRL-C
  U $p:(ctrap=$char(3):exception="use $p write ""Caught Ctrl-C, stopping..."",! HALT")
  ;
  ; Initialize the variables
- S TCPPORT=$G(TCPPORT,9080)
- S DEBUG=$G(DEBUG,0)
- S TLSCONFIG=$G(TLSCONFIG)
- S HTTPLOG=$G(HTTPLOG,1)
- S USERPASS=$G(USERPASS)
- S NOGZIP=$G(NOGZIP,0)
+ S TCPPORT=options("port")
+ S DEBUG=options("debug")
+ S TLSCONFIG=options("tlsconfig")
+ S HTTPLOG=options("log")
+ S USERPASS=options("userpass")
+ S NOGZIP=options("nogzip")
  ;
- WRITE "Starting Server at port "_TCPPORT," "
+ WRITE "Starting Server at port "_TCPPORT," in directory "_$ZD_" "
  WRITE:TLSCONFIG'="" "using TLS configuration "_TLSCONFIG
  WRITE !
  ;
@@ -69,7 +66,7 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  QUIT
  ;
 DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run it now.
- ; Stop using Ctrl-C (duh!)
+ ; Stop using Ctrl-C
  N $ET S $ET="BREAK"
  U $I:(CENABLE:ioerror="T")
  F  W /WAIT(10) I $KEY]"" G CHILD
@@ -301,81 +298,85 @@ STDOUTZW(V)
  QUIT
  ;
 stop(options) ; tell the listener to stop running
-	if '$data(options)#2 do cmdline(.options)
-	if '$data(options("port")) set options("port")=9080
-	new serverProcess set serverProcess=$$portIsOpen(options("port"),$get(options("tls")),$get(options("tlsconfig")))
-	if serverProcess do
-	. write "Now going to stop it...",!
-	. open "mupip":(shell="/bin/sh":command="$ydb_dist/mupip stop "_serverProcess)::"pipe"
-	. use "mupip"
-	. new output read output
-	. use $principal close "mupip"
-	. write output,!
-	quit
-	;
+ if '$data(options)#2 do cmdline(.options)
+ if '$data(options("port")) set options("port")=9080
+ new serverProcess set serverProcess=$$portIsOpen(options("port"),$get(options("tls")),$get(options("tlsconfig")))
+ if serverProcess do
+ . write "Now going to stop it...",!
+ . open "mupip":(shell="/bin/sh":command="$ydb_dist/mupip stop "_serverProcess)::"pipe"
+ . use "mupip"
+ . new output read output
+ . use $principal close "mupip"
+ . write output,!
+ quit
+ ;
 portIsOpen(port,tls,tlsconfig) ; [$$ Private] Check if port is open, if so, return server process
-	open "porttest":(connect="127.0.0.1:"_port_":TCP":delim=$char(13,10):attach="client"):0:"SOCKET"
-	new serverpid set serverpid=0
-	new error set error=0
-	if $test do  quit serverpid
-	. write "Port "_options("port")_" is currently being used.",!
-	. write "Checking if it is the YDB-Web-Server.",!
-	. ;
-	. use "porttest"
-	. ; TLS config
-	. if $get(options("tls")) new d do
-	.. if $get(options("tlsconfig"))'="" write /tls("client",,options("tlsconfig"))
-	.. else  write /tls("client")
-	.. set d=$device
-	.. use $principal write "Using TLS. $DEVICE: "_d,!
-	.. if d write "TLS error, exiting...",! close "porttest" set error=1 quit
-	.. use "porttest"
-	. quit:error
-	. write "GET /ping HTTP/1.1"_$char(13,10)
-	. write "Host: localhost:"_options("port")_$char(13,10)
-	. write "User-Agent: "_$zposition_$char(13,10)
-	. write "Accept: */*"_$char(13,10)_$char(13,10)
-	. new httpstatus read httpstatus
-	. use $principal
-	. write httpstatus,!
-	. use "porttest"
-	. new body
-	. do  close "porttest"
-	. . if httpstatus'["200 OK" use $principal write "Not a YDB Web Server",! set error=1 quit
-	. . new i for i=1:1 read header(i) quit:header(i)=""  set headerByType($piece(header(i),": "))=$piece(header(i),": ",2,99)
-	. . if '$data(headerByType("Content-Length")) use $principal write "No Content-Length header",! set error=1 quit
-	. . read body#headerByType("Content-Length"):0
-	. quit:error
-	. use $principal
-	. write body,!
-	. new parsedBody,error do decode^%ydbwebjson($na(body),$na(parsedBody),$na(error))
-	. if $data(error) write "Error parsing Web Server response",! quit
-	. set serverpid=$get(parsedBody("server"))
-	. write "Server running at "_serverpid,!
-	else  do  quit 0
-	. write "Nothing listening on port "_port,!
-	quit 0
-	;
-	;
+ open "porttest":(connect="127.0.0.1:"_port_":TCP":delim=$char(13,10):attach="client"):0:"SOCKET"
+ new serverpid set serverpid=0
+ new error set error=0
+ if $test do  quit serverpid
+ . write "Port "_options("port")_" is currently being used.",!
+ . write "Checking if it is the YDB-Web-Server.",!
+ . ;
+ . use "porttest"
+ . ; TLS config
+ . if $get(options("tls")) new d do
+ .. if $get(options("tlsconfig"))'="" write /tls("client",,options("tlsconfig"))
+ .. else  write /tls("client")
+ .. set d=$device
+ .. use $principal write "Using TLS. $DEVICE: "_d,!
+ .. if d write "TLS error, exiting...",! close "porttest" set error=1 quit
+ .. use "porttest"
+ . quit:error
+ . write "GET /ping HTTP/1.1"_$char(13,10)
+ . write "Host: localhost:"_options("port")_$char(13,10)
+ . write "User-Agent: "_$zposition_$char(13,10)
+ . write "Accept: */*"_$char(13,10)_$char(13,10)
+ . new httpstatus read httpstatus
+ . use $principal
+ . write httpstatus,!
+ . use "porttest"
+ . new body
+ . do  close "porttest"
+ . . if httpstatus'["200 OK" use $principal write "Not a YDB Web Server",! set error=1 quit
+ . . new i for i=1:1 read header(i) quit:header(i)=""  set headerByType($piece(header(i),": "))=$piece(header(i),": ",2,99)
+ . . if '$data(headerByType("Content-Length")) use $principal write "No Content-Length header",! set error=1 quit
+ . . read body#headerByType("Content-Length"):0
+ . quit:error
+ . use $principal
+ . write body,!
+ . new parsedBody,error do decode^%ydbwebjson($na(body),$na(parsedBody),$na(error))
+ . if $data(error) write "Error parsing Web Server response",! quit
+ . set serverpid=$get(parsedBody("server"))
+ . write "Server running at "_serverpid,!
+ else  do  quit 0
+ . write "Nothing listening on port "_port,!
+ quit 0
+ ;
 cmdline(options) ; [Private] Process command line options
-	; Input: .options("port") server port
-	new cmdline set cmdline=$zcmdline
-	if cmdline="" quit
-	do trimleadingstr^%XCMD(.cmdline," ")
-	if cmdline="" quit
-	for  quit:'$$trimleadingstr^%XCMD(.cmdline,"--")  do ; process options
-	. if $$trimleadingstr^%XCMD(.cmdline,"port") do  quit
-	.. set options("port")=$$trimleadingdelimstr^%XCMD(.cmdline)
-	.. do trimleadingstr^%XCMD(.cmdline," ")
-	. ;
-	. if $$trimleadingstr^%XCMD(.cmdline,"tls") do  quit
-	.. set options("tls")=1
-	.. do trimleadingstr^%XCMD(.cmdline," ")
-	.. if $extract(cmdline)="-" quit
-	.. set options("tlsconfig")=$$trimleadingpiece^%XCMD(.cmdline)
-	.. do trimleadingstr^%XCMD(.cmdline," ")
-	quit
-	;
+ ; Output: .options(subscript)=value
+ new cmdline set cmdline=$zcmdline
+ ; Special case to work around a bug in YottaDB
+ if $extract(cmdline,1,3)="job" set $extract(cmdline,1,3)=""
+ if cmdline="" quit
+ do trimleadingstr^%XCMD(.cmdline," ")
+ if cmdline="" quit
+ for  quit:'$$trimleadingstr^%XCMD(.cmdline,"--")  do ; process options
+ . n o for o="port","log","userpass","tlsconfig" do
+ .. if $$trimleadingstr^%XCMD(.cmdline,o) do  quit
+ ... set options(o)=$$trimleadingdelimstr^%XCMD(.cmdline)
+ ... do trimleadingstr^%XCMD(.cmdline," ")
+ . ;
+ . n o for o="debug","nogzip" do
+ .. if $$trimleadingstr^%XCMD(.cmdline,o) set options(o)=1
+ . ;
+ . if $$trimleadingstr^%XCMD(.cmdline,"tls") do  quit
+ .. set options("tls")=1
+ .. do trimleadingstr^%XCMD(.cmdline," ")
+ .. if $extract(cmdline)="-" quit
+ .. set options("tlsconfig")=$$trimleadingpiece^%XCMD(.cmdline)
+ .. do trimleadingstr^%XCMD(.cmdline," ")
+ quit
  ;
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright (c) 2013-2019 Sam Habiel

@@ -30,17 +30,17 @@ else
 fi
 
 if   [ "$1" = "server" ]; then
-	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080,0,"",'$log')'
+	exec /opt/yottadb/current/yottadb -r start^%ydbwebreq --port 9080 --log $log
 elif [ "$1" = "server-tls" ]; then
-	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080,0,"ydbgui",'$log')'
+	exec /opt/yottadb/current/yottadb -r start^%ydbwebreq --tlsconfig ydbgui --log $log
 elif [ "$1" = "bash" ] || [ "$1" = "shell" ]; then
 	exec /bin/bash
 elif [ "$1" = "debug" ]; then
 	export ydb_zstep='n oldio s oldio=$io u 0 zp @$zpos b  u oldio'
-	exec /opt/yottadb/current/yottadb -r %XCMD 'zb start^%ydbwebreq do start^%ydbwebreq(9080,1)'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'zb start^%ydbwebreq set o("debug")=1 do start^%ydbwebreq(.o)'
 elif [ "$1" = "debug-tls" ]; then
 	export ydb_zstep='n oldio s oldio=$io u 0 zp @$zpos b  u oldio'
-	exec /opt/yottadb/current/yottadb -r %XCMD 'zb TLS^%ydbwebreq do start^%ydbwebreq(9080,1,"ydbgui")'
+	exec /opt/yottadb/current/yottadb -r %XCMD 'zb TLS^%ydbwebreq set o("debug")=1,o("tlsconfig")="ydbgui" do start^%ydbwebreq(.o)'
 elif [ "$1" = "ydbgui" ]; then
 	git clone https://gitlab.com/YottaDB/UI/YDBGUI.git
 	cd YDBGUI
@@ -53,7 +53,7 @@ elif [ "$1" = "ydbgui" ]; then
 	export ydb_routines="$(readlink -f utf8/_ydbgui.so) $ydb_routines"
 	source /opt/yottadb/current/ydb_env_set
 	cd ../wwwroot
-	exec /opt/yottadb/current/yottadb -r %XCMD 'do start^%ydbwebreq(9080,0,"",'$log')'
+	exec /opt/yottadb/current/yottadb -r start^%ydbwebreq
 else # "$1" = "test"
 	/opt/yottadb/current/yottadb -r ^%ydbwebtest | tee test_output.txt
 

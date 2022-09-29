@@ -7,7 +7,7 @@ test if $text(^%ut)="" quit
  quit
  ;
 STARTUP ;
- job start^%ydbwebreq(55728)
+ job start^%ydbwebreq:cmd="job --port 55728"
  set myJob=$zjob
  hang .1
  quit
@@ -17,14 +17,14 @@ SHUTDOWN ;
  quit
  ;
 tstartagain ; @TEST Start again on the same port
- job start^%ydbwebreq(55728)
+ job start^%ydbwebreq:cmd="job --port 55728"
  set myJob=$zjob
  hang .1
  do eq^%ut($zgetjpi(myJob,"ISPROCALIVE"),0)
  quit
  ;
 tdebug ; @TEST Debug Entry Point
- job start^%ydbwebreq(55729,1):(IN="/dev/null":OUT="/dev/null":ERR="/dev/null"):5
+ job start^%ydbwebreq:cmd="job --port 55729 --debug"
  h .1
  n httpStatus,return
  n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55729/")
@@ -128,7 +128,7 @@ tnogzipflag ; @TEST Test nogzip flag
  n gzipflagjob
  ;
  ; Start server with no gzip
- j start^%ydbwebreq(55732,"",,,,1)
+ job start^%ydbwebreq:cmd="job --port 55732 --nogzip"
  h .1
  s gzipflagjob=$zjob
  ;
@@ -231,7 +231,7 @@ tInt ; @TEST ZInterrupt
  ;
 tLog1 ; @TEST Set HTTPLOG to 1
  ; This is the default logging, no need to set
- job start^%ydbwebreq(55731):(IN="/dev/null":OUT="/tmp/sim-stdout1":ERR="/dev/null"):5
+ job start^%ydbwebreq:(cmd="job --port 55731":out="/tmp/sim-stdout1"):5
  new serverjob set serverjob=$zjob
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
@@ -252,7 +252,7 @@ tLog1 ; @TEST Set HTTPLOG to 1
  quit
  ;
 tLog2 ; @TEST Set HTTPLOG to 2
- job start^%ydbwebreq(55731,,,2):(IN="/dev/null":OUT="/tmp/sim-stdout2":ERR="/dev/null"):5
+ job start^%ydbwebreq:(cmd="job --port 55731 --log 2":out="/tmp/sim-stdout2"):5
  new serverjob set serverjob=$zjob
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
@@ -276,7 +276,7 @@ tLog2 ; @TEST Set HTTPLOG to 2
  quit
  ;
 tLog3 ; @TEST Set HTTPLOG to 3
- job start^%ydbwebreq(55731,,,3):(IN="/dev/null":OUT="/tmp/sim-stdout3":ERR="/dev/null"):5
+ job start^%ydbwebreq:(cmd="job --port 55731 --log 3":out="/tmp/sim-stdout3"):5
  new serverjob set serverjob=$zjob
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
@@ -298,7 +298,7 @@ tLog3 ; @TEST Set HTTPLOG to 3
  quit
  ;
 tDCLog ; @TEST Test Log Disconnect
- job start^%ydbwebreq(55731,,,3):(IN="/dev/null":OUT="/tmp/sim-stdout4":ERR="/dev/null"):5
+ job start^%ydbwebreq:(cmd="job --port 55731 --log 3":out="/tmp/sim-stdout4"):5
  new serverjob set serverjob=$zjob
  open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
  else  D FAIL^%ut("Failed to connect to server") quit
@@ -321,7 +321,7 @@ tWebPage ; @TEST Test Getting a web page
  ; Now start a webserver with a new zdirectory of /tmp/
  new oldDir set oldDir=$zd
  set $zd="/tmp/"
- job start^%ydbwebreq(55731)
+ job start^%ydbwebreq:cmd="job --port 55731"
  hang .1
  new serverjob set serverjob=$zjob
  zsy "mkdir -p /tmp/foo"
@@ -354,7 +354,7 @@ tHomePage ; @Test Getting index.html page
  ; Now start a webserver with a new zdirectory of /tmp/
  new oldDir set oldDir=$zd
  set $zd="/tmp/"
- job start^%ydbwebreq(55731)
+ job start^%ydbwebreq:cmd="job --port 55731"
  hang .1
  set nogblJob=$zjob
  new random s random=$R(9817234)
@@ -400,7 +400,7 @@ USERPASS ; @TEST Test that passing a username/password works
  n passwdJob
  ;
  ; Now start a webserver with a passed username/password
- j start^%ydbwebreq(55730,"",,,"admin:admin")
+ j start^%ydbwebreq:cmd="job --port 55730 --userpass admin:admin"
  h .1
  s passwdJob=$zjob
  ;
@@ -449,7 +449,7 @@ tTLS ; @TEST Start with TLS and test
  new ydbpasswd set ydbpasswd=$ZTRNLNM("ydb_tls_passwd_ydbgui")
  if ydbpasswd="" do fail^%ut("TLS is not set-up env 2") quit
  ;
- j start^%ydbwebreq(55730,0,"ydbgui")
+ j start^%ydbwebreq:cmd="job --port 55730 --tlsconfig ydbgui"
  h .1
  new tlsjob s tlsjob=$zjob
  ;

@@ -46,10 +46,10 @@ Run the following in the same build directory:
 ```
 
 # Starting and Stopping the Server
-You can stop the server using `do stop^%webreq`.
+To start the server, run `$ydb_dist/yottadb -run start^%webreq` (with --port <nnnn>). If you don't
+specify a port, it will start at port number 9080.
 
-To start it again, run `do job^%webreq(portno)`, substituting a port number
-of your choice. If you run `do [go]^%webreq`, it will start at port number 9080.
+You can stop the server using `$ydb_dist/yottadb -run stop^%webreq [--port <nnnn>]`.
 
 # Developer Documentation
 See the [doc](doc) folder.
