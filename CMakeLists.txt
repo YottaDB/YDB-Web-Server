@@ -21,14 +21,14 @@ include(FetchContent)
 # The tag is fixed at that point to ensure reproducible builds.
 FetchContent_Declare(YDBCMake
 	GIT_REPOSITORY	https://gitlab.com/YottaDB/Tools/YDBCMake.git
-	GIT_TAG		50e7f4a2484b1a8649d6ef1c4a17e626806c886b
+	GIT_TAG		9ce1b476013e753b5c92ce510258a4ef8d04f0c5
 )
 # The following sets ydbcmake_SOURCE_DIR
 FetchContent_MakeAvailable(YDBCMake)
 message(STATUS "YDBCMake Source Directory: ${ydbcmake_SOURCE_DIR}")
 set(CMAKE_MODULE_PATH "${ydbcmake_SOURCE_DIR}/ydbcmake/")
 
-project(YDBWebServer 
+project(YDBWebServer
 	LANGUAGES M
 	VERSION 0.0.2)
 find_package(YOTTADB REQUIRED)
