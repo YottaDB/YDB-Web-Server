@@ -439,6 +439,28 @@ tpost ; @TEST simple post
  do CHKTF^%ut(return[random)
  quit
  ;
+tgetjson ; @TEST Get simple JSON (tests auto-encoder)
+ n httpStatus,return
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/json")
+ do CHKEQ^%ut(httpStatus,200)
+ do decode^%ydbwebjson("return","data")
+ do eq^%ut(data("foo",2),"doo")
+ quit
+ ;
+tpostmalformed ; @TEST Malformed post
+ n httpStatus,return
+ n random set random=$random(99999999)
+ n payload s payload="{ ""random"" : """_random
+ d &libcurl.init
+ d &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/test/post",payload,"application/json")
+ d &libcurl.cleanup
+ do eq^%ut(httpStatus,400)
+ new returnjson,%ydbweberror
+ do decode^%ydbwebjson($name(return),$name(returnjson),$name(%ydbweberror))
+ do tf^%ut('$data(%ydbweberror))
+ do eq^%ut(returnjson("error","errors",1,"reason"),"JSON Converstion Error")
+ quit
+ ;
 tTLS ; @TEST Start with TLS and test
  new cryptfile set cryptfile=$zsearch("/mwebserver/certs/ydbgui.ydbcrypt",-1)
  if cryptfile="" do fail^%ut("TLS is not set-up file") quit

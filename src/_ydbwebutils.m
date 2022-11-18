@@ -88,16 +88,17 @@ setError1 ;
  I ERRCODE<500,ERRCODE>400 S HTTPERR=ERRCODE,TOPMSG=ERRNAME  ; Other HTTP Errors
  ;
  I $I(HTTPERR("count"))
- S HTTPERR("apiVersion")="1.0"
+ S HTTPERR("apiVersion")="1.1"
  S HTTPERR("error","code")=HTTPERR
- S HTTPERR("error","message")=TOPMSG
+ S HTTPERR("error","toperror")=TOPMSG
  S HTTPERR("error","request")=$G(HTTPREQ("method"))_" "_$G(HTTPREQ("path"))_" "_$G(HTTPREQ("query"))
  I $D(ERRARRAY) D
- . M HTTPERR("error","errors",HTTPERR("count"))=ERRARRAY  ; VEN/SMH
+ . S HTTPERR("error","errors",HTTPERR("count"),"reason")=MESSAGE
+ . M HTTPERR("error","errors",HTTPERR("count"),"message")=ERRARRAY  ; VEN/SMH
  E  D
  . S HTTPERR("error","errors",HTTPERR("count"),"reason")=ERRCODE
- . S HTTPERR("error","errors",HTTPERR("count"),"message")=ERRNAME
- I $L($G(MESSAGE)) S HTTPERR("error","errors",HTTPERR("count"),"domain")=MESSAGE
+ . S HTTPERR("error","errors",HTTPERR("count"),"errname")=ERRNAME
+ . S HTTPERR("error","errors",HTTPERR("count"),"message")=MESSAGE
  Q
 customError(ERRCODE,ERRARRAY) ; set custom error into HTTPERR
  S HTTPERR=ERRCODE

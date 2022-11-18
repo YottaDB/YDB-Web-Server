@@ -223,7 +223,7 @@ ETCODE ; error trap when calling out to routines
  S ERRARR("reason")=$ECODE
  S ERRARR("place")=$STACK($STACK(-1),"PLACE")
  S ERRARR("mcode")=$STACK($STACK(-1),"MCODE")
- D SETERROR^%ydbwebutils(501,,.ERRARR) ; sets HTTPERR
+ D SETERROR^%ydbwebutils(501,"M Execution Error",.ERRARR) ; sets HTTPERR
  D LOGERR
  D RSPERROR^%ydbwebrsp  ; switch to error response
  D SENDATA^%ydbwebrsp

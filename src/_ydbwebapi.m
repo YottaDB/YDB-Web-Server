@@ -61,12 +61,16 @@ utf8post ; POST /test/utf8/post
  new output
  do decode^%ydbwebjson($na(httpreq("body")),$na(output))
  set httprsp(1)=$extract(httpargs("foo"),1,3)_$C(13,10)
- set httprsp(2)=$get(output("直接"))
+ set httprsp(2)=$get(httpreq("json","直接"))
+ set httprsp("mime")="text/plain; charset=UTF-8"
  set httploc="test/utf8/post?foo="_httpargs("foo")
  quit
  ;
 ping ; GET /ping writes out a ping response
- set httprsp="{""self"": """_$job_""", ""server"": """_PPID_"""}"
+ set httprsp("self")=$job
+ set httprsp("self","\s")=""
+ set httprsp("server")=PPID
+ set httprsp("server","\s")=""
  quit
  ;
 xml ; GET /test/xml XML sample
@@ -80,6 +84,12 @@ xml ; GET /test/xml XML sample
  set httprsp(7)="</note>"
  QUIT
  ;
+getjson ; GET /test/json JSON sample
+ set httprsp("foo",1)="boo"
+ set httprsp("foo",2)="doo"
+ set httprsp("foo",3)="loo"
+ quit
+ ;
 customerr ; GET /test/customerror custom error sample
  n errarr
  s errarr("resourceType")="OperationOutcome"
@@ -90,16 +100,13 @@ customerr ; GET /test/customerror custom error sample
  quit
  ;
 empty(r,a) ; GET /test/empty. Used For Unit Tests
+ S httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  s r=""
  QUIT
  ;
 posttest ; POST /test/post Simple test for post
- N PARAMS ; Parsed array which stores each line on a separate node.
- D decode^%ydbwebjson($NA(httpreq("body")),$NA(PARAMS),$NA(%WERR))
- I $D(%WERR) D SETERROR^%ydbwebutils("400","Input parameters not correct") QUIT ""
- ;
  S httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
- S httprsp="/path/"_PARAMS("random")_"/1" ; Stored URL
+ S httprsp="/path/"_httpreq("json","random")_"/1" ; Stored URL
  S httploc=httprsp
  quit
  ;

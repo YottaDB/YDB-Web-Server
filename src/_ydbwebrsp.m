@@ -50,7 +50,13 @@ RESPOND ; find entry point to handle request and call it
  set *httprsp=HTTPRSP
  set *httploc=HTTPLOC
  ;
- do @ROUTINE
+ ; If the HTTPREQ("body") is actually JSON, convert it to an M array in HTTPREQ("json")
+ new %webjsonerror
+ if $get(HTTPREQ("header","content-type"))="application/json" do
+ . do decode^%ydbwebjson($name(httpreq("body")),$name(httpreq("json")),$name(%webjsonerror))
+ . if $data(%webjsonerror) do setError^%ydbwebutils("201","JSON Converstion Error",.%webjsonerror)
+ ;
+ if '$data(%webjsonerror) do @ROUTINE
 
  if $get(HTTPLOC)'="" do
  . S HTTPRSP("location")=$S($D(HTTPREQ("header","host")):HTTPREQ("header","host")_HTTPLOC,1:HTTPLOC)
@@ -93,7 +99,7 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  . ; user must authenticate
  . S HTTPRSP("auth")="Basic realm="""_HTTPREQ("header","host")_"""" ; Send Authentication Header
  . N AUTHEN S AUTHEN=(USERPASS=$$DECODE64^%ydbwebutils($P($G(HTTPREQ("header","authorization"))," ",2))) ; Try to authenticate
- . I 'AUTHEN D SETERROR^%ydbwebutils(401) QUIT  ; Unauthoirzed
+ . I 'AUTHEN D SETERROR^%ydbwebutils(401,"Unauthorized") QUIT  ; Unauthoirzed
  QUIT
  ;
  ;
@@ -148,7 +154,16 @@ SENDATA ; write out the data as an HTTP response
  . D FLUSH
  . K @ARY
  ;
- N SIZE,RSPTYPE,PREAMBLE,START,LIMIT
+ N SIZE,RSPTYPE,PREAMBLE,START,LIMIT,JSONOUT
+ ;
+ ; Set mime up, and auto-encode JSON if necessary
+ I '$D(HTTPRSP("mime")) set HTTPRSP("mime")="application/json; charset=utf-8"
+ I HTTPRSP("mime")["application/json" D
+ . kill HTTPRSP("mime")
+ . do encode^%ydbwebjson($name(HTTPRSP),$name(JSONOUT),$name(%ydbjsonerror))
+ . set *HTTPRSP=JSONOUT
+ . set HTTPRSP("mime")="application/json; charset=utf-8"
+ ;
  N RSPLINE S RSPLINE=$$RSPLINE()
  S RSPTYPE=$S($E($G(HTTPRSP))'="^":1,$D(HTTPRSP("pageable")):3,1:2)
  I RSPLINE[304 S SIZE=0 ; Not modified. Don't send data.
@@ -163,9 +178,7 @@ SENDATA ; write out the data as an HTTP response
  I $D(HTTPRSP("location")) D W("Location: "_HTTPRSP("location")_$C(13,10))  ; Response Location
  I $D(HTTPRSP("auth")) D W("WWW-Authenticate: "_HTTPRSP("auth")_$C(13,10)) K HTTPRSP("auth") ; Authentication
  I $D(HTTPRSP("ETag")) D W("ETag: "_HTTPRSP("ETag")_$C(13,10)) K HTTPRSP("ETag") ; ETag
- I $D(HTTPRSP("mime")) D  ; Stack $TEST for the ELSE below
- . D W("Content-Type: "_HTTPRSP("mime")_$C(13,10)) K HTTPRSP("mime") ; Mime-type
- E  D W("Content-Type: application/json; charset=utf-8"_$C(13,10))
+ I $D(HTTPRSP("mime")) D W("Content-Type: "_HTTPRSP("mime")_$C(13,10)) K HTTPRSP("mime") ; Mime type
  ;
  ; Add CORS Header
  I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Allow-Methods: OPTIONS, POST"_$C(13,10))
@@ -177,6 +190,8 @@ SENDATA ; write out the data as an HTTP response
  ;
  D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
  I 'SIZE!(HTTPREQ("method")="HEAD") D FLUSH Q  ; flush buffer and quit if empty
+ ;
+ ; Auto encode to JSON?
  ;
  N I,J
  I RSPTYPE=1 D            ; write out local variable
@@ -264,8 +279,9 @@ RSPERROR ; set response to be an error response
  ; Count is a temporary variable to track multiple errors... don't send it back
  ; pageable is VPR code, not used, but kept for now.
  K HTTPERR("count"),HTTPRSP("pageable")
- D encode^%ydbwebjson($NAME(HTTPERR),$NAME(HTTPRSP))
+ S *HTTPRSP=HTTPERR
  Q
+ ;
 RSPLINE() ; writes out a response line based on HTTPERR
  I $D(HTTPREQ("header","if-none-match")),$D(HTTPRSP("ETag")) N OK S OK=0 D  Q:OK "HTTP/1.1 304 Not Modified"
  . I HTTPREQ("header","if-none-match")=HTTPRSP("ETag") S OK=1
