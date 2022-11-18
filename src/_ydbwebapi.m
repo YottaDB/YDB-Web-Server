@@ -1,19 +1,20 @@
 %ydbwebapi ; OSE/SMH - Infrastructure web services hooks;Jun 20, 2022@14:45
  ;
-R(RESULT,ARGS) ; GET /test/r/{routine} Mumps Routine
- S RESULT("mime")="text/plain; charset=utf-8"
- N RTN S RTN=$G(ARGS("routine"))
+R ; GET /test/r/{routine} Mumps Routine
+ S HTTPRSP("mime")="text/plain; charset=utf-8"
+ N RTN S RTN=$G(HTTPARGS("routine"))
  N OFF,I
- I RTN]""&($T(^@RTN)]"") F I=1:1 S OFF="+"_I,LN0=OFF_"^"_RTN,LN=$T(@LN0) Q:LN=""  S RESULT(I)=LN_$C(13,10)
- E  K RESULT("mime") D setError^%ydbwebutils(404,"Routine not found")
+ I RTN]""&($T(^@RTN)]"") F I=1:1 S OFF="+"_I,LN0=OFF_"^"_RTN,LN=$T(@LN0) Q:LN=""  S HTTPRSP(I)=LN_$C(13,10)
+ E  K HTTPRSP("mime") D setError^%ydbwebutils(404,"Routine not found")
  QUIT
  ;
-PR(ARGS,BODY,RESULT) ; PUT /test/r/{routine} Mumps Routine
+PR ; PUT /test/r/{routine} Mumps Routine
  S HTTPRSP("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  N PARSED ; Parsed array which stores each line on a separate node.
+ N BODY M BODY=HTTPREQ("body")
  D PARSE10^%ydbwebutils(.BODY,.PARSED) ; Parser
  N DIE,XCN S DIE="PARSED(",XCN=0
- N RN S RN=ARGS("routine")
+ N RN S RN=HTTPARGS("routine")
  Q:$E(RN,1,4)'="KBAN"  ; Just for this server, don't do this.
  N %,%F,%I,%N,SP,$ETRAP
  S $ETRAP="S $ECODE="""" Q"
@@ -23,60 +24,63 @@ PR(ARGS,BODY,RESULT) ; PUT /test/r/{routine} Mumps Routine
  C %F
  ZLINK RN
  U %I
- Q "/r/"_ARGS("routine")
+ S HTTPLOC="/test/r/"_RN
+ QUIT
  ;
-err(RESULT,ARGS) ; GET /test/error Force M Error
- I $G(ARGS("foo"))="crash2" S %webcrash2=1 ; crash the error trap
+err ; GET /test/error Force M Error
+ I $G(httpargs("foo"))="crash2" S %webcrash2=1 ; crash the error trap
  D err1
  QUIT
 err1 ;
  N X S X=1/0
  ;
-bigoutput(result,args) ; GET /test/bigoutput - Used by Unit Tests to ensure large output is handled appropriately
+bigoutput ; GET /test/bigoutput - Used by Unit Tests to ensure large output is handled appropriately
  n a,b,c
  s $p(a,"a",2**10)="a"
- n i for i=1:1:32 s result(i)=a
- s result(32)=$e(result(32),1,$l(result(32))-1)
+ n i for i=1:1:32 s httprsp(i)=a
+ s httprsp(32)=$e(httprsp(32),1,$l(httprsp(32))-1)
  s b=$c(13,10)
- s result(33)=b
- s result("mime")="text/plain; charset=utf-8" ; type of data to send browser
+ s httprsp(33)=b
+ s httprsp("mime")="text/plain; charset=utf-8" ; type of data to send browser
  quit
  ;
-gloreturn(result,args) ; GET /test/gloreturn - Used by Unit Tests to ensure Global deleted properly
- s result=$name(^web("%ydbwebapi"))
- s @result="coo"_$c(13,10)
- s @result@(1)="boo"_$c(13,10)
- s @result@(2)="foo"_$c(13,10)
- s result("mime")="text/plain; charset=utf-8" ; type of data to send browser
+gloreturn ; GET /test/gloreturn - Used by Unit Tests to ensure Global deleted properly
+ s httprsp=$name(^web("%ydbwebapi"))
+ s @httprsp="coo"_$c(13,10)
+ s @httprsp@(1)="boo"_$c(13,10)
+ s @httprsp@(2)="foo"_$c(13,10)
+ s httprsp("mime")="text/plain; charset=utf-8" ; type of data to send browser
  quit
  ;
-utf8get(res,params) ; GET /test/utf8/get
- set res=params("foo")
- set res("mime")="text/plain; charset=UTF-8"
+utf8get ; GET /test/utf8/get
+ set httprsp=httpargs("foo")
+ set httprsp("mime")="text/plain; charset=UTF-8"
  quit
  ;
-utf8post(params,body,res) ; POST /test/utf8/post
+utf8post ; POST /test/utf8/post
  new output
- do decode^%ydbwebjson($na(body),$na(output))
- set res(1)=$extract(params("foo"),1,3)_$C(13,10)
- set res(2)=$get(output("直接"))
- quit "test/utf8/post?foo="_params("foo")
+ do decode^%ydbwebjson($na(httpreq("body")),$na(output))
+ set httprsp(1)=$extract(httpargs("foo"),1,3)_$C(13,10)
+ set httprsp(2)=$get(output("直接"))
+ set httploc="test/utf8/post?foo="_httpargs("foo")
+ quit
  ;
-ping(RESULT,ARGS) ; GET /ping writes out a ping response
- S RESULT="{""self"": """_$J_""", ""server"": """_PPID_"""}"
- Q
-xml(RESULT,ARGS) ; GET /test/xml XML sample
- S HTTPRSP("mime")="text/xml"
- S RESULT(1)="<?xml version=""1.0"" encoding=""UTF-8""?>"
- S RESULT(2)="<note>"
- S RESULT(3)="<to>Tovaniannnn</to>"
- S RESULT(4)="<from>Jani</from>"
- S RESULT(5)="<heading>Reminders</heading>"
- S RESULT(6)="<body>Don't forget me this weekend!</body>"
- S RESULT(7)="</note>"
+ping ; GET /ping writes out a ping response
+ set httprsp="{""self"": """_$job_""", ""server"": """_PPID_"""}"
+ quit
+ ;
+xml ; GET /test/xml XML sample
+ set httprsp("mime")="text/xml"
+ set httprsp(1)="<?xml version=""1.0"" encoding=""UTF-8""?>"
+ set httprsp(2)="<note>"
+ set httprsp(3)="<to>Tovaniannnn</to>"
+ set httprsp(4)="<from>Jani</from>"
+ set httprsp(5)="<heading>Reminders</heading>"
+ set httprsp(6)="<body>Don't forget me this weekend!</body>"
+ set httprsp(7)="</note>"
  QUIT
  ;
-customerr(r,a) ; GET /test/customerror custom error sample
+customerr ; GET /test/customerror custom error sample
  n errarr
  s errarr("resourceType")="OperationOutcome"
  s errarr("issue",1,"severity")="error"
@@ -89,21 +93,19 @@ empty(r,a) ; GET /test/empty. Used For Unit Tests
  s r=""
  QUIT
  ;
-posttest(ARGS,BODY,RESULT) ; POST /test/post Simple test for post
+posttest ; POST /test/post Simple test for post
  N PARAMS ; Parsed array which stores each line on a separate node.
- D decode^%ydbwebjson($NA(BODY),$NA(PARAMS),$NA(%WERR))
+ D decode^%ydbwebjson($NA(httpreq("body")),$NA(PARAMS),$NA(%WERR))
  I $D(%WERR) D SETERROR^%ydbwebutils("400","Input parameters not correct") QUIT ""
  ;
- S RESULT("mime")="text/plain; charset=utf-8" ; Character set of the return URL
- S RESULT="/path/"_PARAMS("random")_"/1" ; Stored URL
- Q RESULT
-
-FILESYS(RESULT,ARGS) ; Handle reads from File system.
- I '$D(ARGS)&$D(PATHSEG) S ARGS("*")=PATHSEG
- N PATH
+ S httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+ S httprsp="/path/"_PARAMS("random")_"/1" ; Stored URL
+ S httploc=httprsp
+ quit
  ;
+FILESYS(ARGPATH) ; Handle reads from File system.
  ; get the actual path
- S PATH=$ZDIRECTORY_ARGS("*")
+ N PATH S PATH=$ZDIRECTORY_ARGPATH
  ;
  ; GT.M errors out on file no found
  N $ET S $ET="G FILESYSE"
@@ -122,19 +124,19 @@ FILESYS(RESULT,ARGS) ; Handle reads from File system.
  set MIMELKUP("aiff")="audio/aiff"
  set MIMELKUP("au")="audio/basic"
  set MIMELKUP("avi")="video/avi"
- set MIMELKUP("css")="text/css"
- set MIMELKUP("csv")="text/csv"
+ set MIMELKUP("css")="text/css; charset=utf-8"
+ set MIMELKUP("csv")="text/csv; charset=utf-8"
  set MIMELKUP("doc")="application/msword"
  set MIMELKUP("gif")="image/gif"
- set MIMELKUP("htm")="text/html"
- set MIMELKUP("html")="text/html"
+ set MIMELKUP("htm")="text/html; charset=utf-8"
+ set MIMELKUP("html")="text/html; charset=utf-8"
  set MIMELKUP("ico")="image/x-icon"
  set MIMELKUP("jpe")="image/jpeg"
  set MIMELKUP("jpeg")="image/jpeg"
  set MIMELKUP("jpg")="image/jpeg"
  set MIMELKUP("js")="application/javascript"
- set MIMELKUP("kid")="text/x-mumps-kid"
- set MIMELKUP("m")="text/x-mumps"
+ set MIMELKUP("kid")="text/x-mumps-kid; charset=utf-8"
+ set MIMELKUP("m")="text/x-mumps; charset=utf-8"
  set MIMELKUP("mov")="video/quicktime"
  set MIMELKUP("mp3")="audio/mpeg3"
  set MIMELKUP("pdf")="application/pdf"
@@ -146,8 +148,8 @@ FILESYS(RESULT,ARGS) ; Handle reads from File system.
  set MIMELKUP("tex")="application/x-tex"
  set MIMELKUP("tif")="image/tiff"
  set MIMELKUP("tiff")="image/tiff"
- set MIMELKUP("txt")="text/plain"
- set MIMELKUP("log")="text/plain"
+ set MIMELKUP("txt")="text/plain; charset=utf-8"
+ set MIMELKUP("log")="text/plain; charset=utf-8"
  set MIMELKUP("wav")="audio/wav"
  set MIMELKUP("xls")="application/vnd.ms-excel"
  set MIMELKUP("zip")="application/zip"
@@ -157,19 +159,19 @@ FILESYS(RESULT,ARGS) ; Handle reads from File system.
  set MIMELKUP("eot")="font/eot"
  set MIMELKUP("otf")="font/otf"
  new EXT set EXT=$PIECE(PATH,".",$LENGTH(PATH,"."))
- if $DATA(MIMELKUP(EXT)) set RESULT("mime")=MIMELKUP(EXT)
- else  set RESULT("mime")=MIMELKUP("txt")
+ if $DATA(MIMELKUP(EXT)) set HTTPRSP("mime")=MIMELKUP(EXT)
+ else  set HTTPRSP("mime")=MIMELKUP("txt")
  ;
  ; Read operation
  U PATH
  N C S C=1
- N X F  R X#4079:0 S RESULT(C)=X,C=C+1 Q:$ZEOF
+ N X F  R X#4079:0 S HTTPRSP(C)=X,C=C+1 Q:$ZEOF
  C PATH
  ;
  ; Create ETag
  N ETAG S ETAG=""
- F C=0:0 S C=$O(RESULT(C)) Q:'C  S ETAG=$ZYHASH(ETAG_RESULT(C))
- set RESULT("ETag")=ETAG
+ F C=0:0 S C=$O(HTTPRSP(C)) Q:'C  S ETAG=$ZYHASH(ETAG_HTTPRSP(C))
+ set HTTPRSP("ETag")=ETAG
  ; 
  QUIT
  ;

@@ -5,7 +5,7 @@
 RESPOND ; find entry point to handle request and call it
  ; expects HTTPREQ, HTTPRSP is used to return the response
  ;
- N ROUTINE,LOCATION,HTTPARGS,HTTPBODY
+ N ROUTINE,LOCATION,HTTPARGS,HTTPLOC
  I HTTPREQ("path")="/",HTTPREQ("method")="GET" D en^%ydbwebhome(.HTTPRSP) QUIT  ; Home page requested.
  I HTTPREQ("method")="OPTIONS" S HTTPRSP="OPTIONS,POST" QUIT ; Always repond to OPTIONS to give CORS header info
  ;
@@ -22,19 +22,40 @@ RESPOND ; find entry point to handle request and call it
  N %WNULL S %WNULL="/dev/null"
  O %WNULL U %WNULL
  ;
- N BODY M BODY=HTTPREQ("body") K HTTPREQ("body")
+ ; HTTPREQ("method") contains GET, POST, PUT, HEAD, or DELETE
+ ; HTTPREQ("path") contains the path of the request (part from server to ?)
+ ; HTTPREQ("query") contains any query params (part after ?)
+ ; HTTPREQ("header",name) contains a node for each header value
+ ; HTTPREQ("body",n) contains as an array the body of the request
+ ; HTTPREQ("location") stashes the location value for PUT, POST
  ;
- ; r will contain the routine to execute
- n r
- if "PUT,POST"[HTTPREQ("method") do 
- . set r=ROUTINE_"(.HTTPARGS,.BODY,.HTTPRSP)"
- . xecute "S LOCATION=$$"_r
- else  set r=ROUTINE_"(.HTTPRSP,.HTTPARGS)" do @r
+ ; HTTPARGS is a key-value array of arguments in the server
  ;
- if $get(LOCATION)'="" do
- . S HTTPREQ("location")=$S($D(HTTPREQ("header","host")):HTTPREQ("header","host")_LOCATION,1:LOCATION)
- . if $get(TLSCONFIG)'="" set HTTPREQ("location")="https://"_HTTPREQ("location")
- . else                   set HTTPREQ("location")="http://"_HTTPREQ("location")
+ ; HTTPRSP will contain the result of the operation. Most of the time you should put data in the format
+ ; HTTPRSP(1)=..., HTTPRSP(2)=...
+ ; You don't have to store this in order, and can have any structure, but this is not tested for.
+ ; You can set HTTPRSP to a global, and it will get KILLED after it has been sent.
+
+ ; if HTTPRSP("raw")=1, then @HTTPRSP will be $queried for the output without
+ ; any transformations and the output will be sent as is.
+ ; HTTPRSP("mime") will contain the mime type (default is application/json)
+ ; HTTPRSP("ETag") contains the ETag. It's optional.
+ ; HTTPRSP("pageable"): not currently implemented.
+ ; HTTPLOC contains the location of the new PUT/POST resource. It's put in HTTPRSP("location").
+ ; 
+ ; Set-up lower-case aliases
+ new httpreq,httpargs,httprsp,httploc
+ set *httpreq=HTTPREQ
+ set *httpargs=HTTPARGS
+ set *httprsp=HTTPRSP
+ set *httploc=HTTPLOC
+ ;
+ do @ROUTINE
+
+ if $get(HTTPLOC)'="" do
+ . S HTTPRSP("location")=$S($D(HTTPREQ("header","host")):HTTPREQ("header","host")_HTTPLOC,1:HTTPLOC)
+ . if $get(TLSCONFIG)'="" set HTTPRSP("location")="https://"_HTTPRSP("location")
+ . else                   set HTTPRSP("location")="http://"_HTTPRSP("location")
  ;
  ; Back to our original device
  C %WNULL U %WTCP
@@ -56,8 +77,6 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  ; expects HTTPREQ to contain "path" and "method" nodes
  ; ROUTINE contains the TAG^ROUTINE to execute for this path, otherwise empty
  ; .ARGS will contain an array of resolved path arguments
- ;  - PUT/POST (.HTTPARGS,.BODY,.HTTPRSP)
- ;  - HEAD/GET/DELETE (.HTTPRSP,.HTTPARGS)
  ;
  S ROUTINE=""  ; Default. Routine not found. Error 404.
  ;
@@ -109,8 +128,8 @@ MATCHR(ROUTINE,ARGS) ; Match against _ydbweburl.m
  QUIT
  ;
 MATCHFS(ROUTINE) ; Match against the file system
- N ARGS S ARGS("*")=$E(HTTPREQ("path"),2,9999)
- D FILESYS^%ydbwebapi(.HTTPRSP,.ARGS)
+ N PATH S PATH=$E(HTTPREQ("path"),2,9999)
+ D FILESYS^%ydbwebapi(PATH)
  I $O(HTTPRSP(0)) S ROUTINE="FILESYS^%ydbwebapi"
  quit
  ;
@@ -141,7 +160,7 @@ SENDATA ; write out the data as an HTTP response
  ;
  D W(RSPLINE_$C(13,10)) ; Status Line (200, 404, etc)
  D W("Date: "_$$GMT^%ydbwebutils_$C(13,10)) ; RFC 1123 date
- I $D(HTTPREQ("location")) D W("Location: "_HTTPREQ("location")_$C(13,10))  ; Response Location
+ I $D(HTTPRSP("location")) D W("Location: "_HTTPRSP("location")_$C(13,10))  ; Response Location
  I $D(HTTPRSP("auth")) D W("WWW-Authenticate: "_HTTPRSP("auth")_$C(13,10)) K HTTPRSP("auth") ; Authentication
  I $D(HTTPRSP("ETag")) D W("ETag: "_HTTPRSP("ETag")_$C(13,10)) K HTTPRSP("ETag") ; ETag
  I $D(HTTPRSP("mime")) D  ; Stack $TEST for the ELSE below
@@ -250,8 +269,8 @@ RSPERROR ; set response to be an error response
 RSPLINE() ; writes out a response line based on HTTPERR
  I $D(HTTPREQ("header","if-none-match")),$D(HTTPRSP("ETag")) N OK S OK=0 D  Q:OK "HTTP/1.1 304 Not Modified"
  . I HTTPREQ("header","if-none-match")=HTTPRSP("ETag") S OK=1
- I '$G(HTTPERR),'$D(HTTPREQ("location")) Q "HTTP/1.1 200 OK"
- I '$G(HTTPERR),$D(HTTPREQ("location")) Q "HTTP/1.1 201 Created"
+ I '$G(HTTPERR),'$D(HTTPRSP("location")) Q "HTTP/1.1 200 OK"
+ I '$G(HTTPERR),$D(HTTPRSP("location")) Q "HTTP/1.1 201 Created"
  I $G(HTTPERR)=400 Q "HTTP/1.1 400 Bad Request"
  I $G(HTTPERR)=401 Q "HTTP/1.1 401 Unauthorized"
  I $G(HTTPERR)=404 Q "HTTP/1.1 404 Not Found"

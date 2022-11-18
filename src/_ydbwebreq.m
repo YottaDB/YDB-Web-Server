@@ -81,7 +81,6 @@ DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run 
  ; HTTPREQ("header",name) contains a node for each header value
  ; HTTPREQ("body",n) contains as an array the body of the request
  ; HTTPREQ("location") stashes the location value for PUT, POST
- ; HTTPREQ("store") stashes the type of store (vpr or data)
  ;
  ; HTTPRSP contains the HTTP response (or name of global with the response)
  ; HTTPLOG indicates the logging level for this process

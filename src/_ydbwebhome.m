@@ -18,9 +18,9 @@
 en(RESULT) ; PEP
  S RESULT("mime")="text/html; charset=utf-8"
  N CRLF S CRLF=$C(13,10)
- N ARGS S ARGS("*")="index.html"
+ N PATH S PATH="index.html"
  ; Retrieve index.html from filesystem before returning default page
- D FILESYS^%ydbwebapi(.RESULT,.ARGS)
+ D FILESYS^%ydbwebapi(PATH)
  ; If we have an error, it means we don't have an index page; ignore and return handlers page instead
  I HTTPERR S HTTPERR=0 K RESULT
  ; If we found an index.html don't return the default
@@ -43,7 +43,7 @@ en(RESULT) ; PEP
  ... S RESULT(J)="<tr>",J=J+.0001
  ... S RESULT(J)="<td>"_METHOD_"</td>",J=J+.0001
  ... S RESULT(J)="<td>"_URL_"</td>",J=J+.0001
- ... S RESULT(J)="<td><a href=""r/"_RTN_""">"_EP_"</td>",J=J+.0001
+ ... S RESULT(J)="<td><a href=""test/r/"_RTN_""">"_EP_"</td>",J=J+.0001
  ... S RESULT(J)="</tr>",J=J+.0001
  . I RESULT(I)="<%FOOTER%>" S RESULT(I)="$JOB="_$J_" | $SYSTEM="_$SYSTEM
  . S RESULT(I)=RESULT(I)_CRLF
