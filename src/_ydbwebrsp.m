@@ -52,7 +52,7 @@ RESPOND ; find entry point to handle request and call it
  ;
  ; If the HTTPREQ("body") is actually JSON, convert it to an M array in HTTPREQ("json")
  new %webjsonerror
- if $get(HTTPREQ("header","content-type"))="application/json" do
+ if $get(httpreq("header","content-type"))="application/json",$data(httpreq("body")) do
  . do decode^%ydbwebjson($name(httpreq("body")),$name(httpreq("json")),$name(%webjsonerror))
  . if $data(%webjsonerror) do setError^%ydbwebutils("201","JSON Converstion Error",.%webjsonerror)
  ;

@@ -441,7 +441,7 @@ tpost ; @TEST simple post
  ;
 tgetjson ; @TEST Get simple JSON (tests auto-encoder)
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/json")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/json",,"application/json")
  do CHKEQ^%ut(httpStatus,200)
  do decode^%ydbwebjson("return","data")
  do eq^%ut(data("foo",2),"doo")
