@@ -76,7 +76,8 @@ setError1 ;
  I ERRCODE=301 S ERRNAME="Required variable undefined"
  ; HTTP errors
  I ERRCODE=400 S ERRNAME="Bad Request"
- I ERRCODE=401 S ERRNAME="Unauthorized" ; VEN/SMH
+ I ERRCODE=401 S ERRNAME="Unauthorized"
+ I ERRCODE=403 S ERRNAME="Forbidden"
  I ERRCODE=404 S ERRNAME="Not Found"
  I ERRCODE=405 S ERRNAME="Method Not Allowed"
  ; system errors (500-599)
