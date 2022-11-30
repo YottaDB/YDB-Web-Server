@@ -503,12 +503,38 @@ tEtag1 ; @TEST Test caching with Etag
  ;zwrite httpStatus,return,headers
  ;
  d &libcurl.init
- d &libcurl.addHeader("If-None-Match: 0x88375a6109328211d2e5093f3162e517") ; This must be sent to properly test as the server is smart and if we don't send that we support gzip it won't gzip
+ d &libcurl.addHeader("If-None-Match: 0x88375a6109328211d2e5093f3162e517")
  n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test.txt",,,,.headers)
  do CHKEQ^%ut(httpStatus,304)
  ;
  quit
  ;
+tReadWrite ; @TEST Test read-write flag
+ new httpStatus,return
+ ;
+ ; Default status is zero
+ new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/readwrite")
+ do eq^%ut(httpStatus,200)
+ do eq^%ut(return,0)
+ ;
+ ; Now start a webserver with read/write
+ job start^%ydbwebreq:cmd="job --port 55730 --readwrite"
+ hang .1
+ new rwserver set rwserver=$zjob
+ ; 
+ ; Get new status
+ new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/readwrite")
+ do eq^%ut(httpStatus,200)
+ do eq^%ut(return,1)
+ ;
+ ; now stop the webserver with read/write
+ new x
+ open "p":(command="$gtm_dist/mupip stop "_rwserver)::"pipe"
+ use "p" r x:1
+ close "p"
+ do CHKEQ^%ut($ZCLOSE,0)
+ quit
+ 
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
  new options set options("port")=55728
  do stop^%ydbwebreq(.options)

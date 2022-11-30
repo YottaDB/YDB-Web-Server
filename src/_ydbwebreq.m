@@ -12,6 +12,7 @@ start(options) ; set up listening for connections
  if '$data(options("log"))       set options("log")=1        ; --log n
  if '$data(options("userpass"))  set options("userpass")=""  ; --userpass xxx:yyy
  if '$data(options("nogzip"))    set options("nogzip")=0     ; --nogzip
+ if '$data(options("readwrite")) set options("readwrite")=0  ; --readwrite
  ;
  ;
  ; Enable CTRL-C
@@ -24,9 +25,16 @@ start(options) ; set up listening for connections
  S HTTPLOG=options("log")
  S USERPASS=options("userpass")
  S NOGZIP=options("nogzip")
+ S READWRITE=options("readwrite")
+ S HTTPREADWRITE=READWRITE ; This is a user exposed variable, so it starts with HTTP
  ;
  WRITE "Starting Server at port "_TCPPORT," in directory "_$ZD_" "
- WRITE:TLSCONFIG'="" "using TLS configuration "_TLSCONFIG
+ WRITE:TLSCONFIG'="" "using TLS configuration "_TLSCONFIG_" "
+ WRITE "at logging level "_HTTPLOG_" "
+ WRITE:DEBUG "in debug mode "
+ WRITE:USERPASS "using a username,password "
+ WRITE:NOGZIP "disabling gzip "
+ WRITE:READWRITE "in readwrite mode "
  WRITE !
  ;
  ; Device ID
@@ -361,12 +369,12 @@ cmdline(options) ; [Private] Process command line options
  do trimleadingstr^%XCMD(.cmdline," ")
  if cmdline="" quit
  for  quit:'$$trimleadingstr^%XCMD(.cmdline,"--")  do ; process options
- . n o for o="port","log","userpass","tlsconfig" do
+ . new o for o="port","log","userpass","tlsconfig" do
  .. if $$trimleadingstr^%XCMD(.cmdline,o) do  quit
  ... set options(o)=$$trimleadingdelimstr^%XCMD(.cmdline)
  ... do trimleadingstr^%XCMD(.cmdline," ")
  . ;
- . n o for o="debug","nogzip" do
+ . new o for o="debug","nogzip","readwrite" do
  .. if $$trimleadingstr^%XCMD(.cmdline,o) set options(o)=1
  . ;
  . if $$trimleadingstr^%XCMD(.cmdline,"tls") do  quit

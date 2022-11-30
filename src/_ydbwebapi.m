@@ -110,6 +110,11 @@ posttest ; POST /test/post Simple test for post
  S httploc=httprsp
  quit
  ;
+readwritetest ; GET /test/readwrite Tests readwrite flag
+ set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+ set httprsp=HTTPREADWRITE ; 0 or 1
+ quit
+ ;
 FILESYS(ARGPATH) ; Handle reads from File system.
  ; get the actual path
  N PATH S PATH=$ZDIRECTORY_ARGPATH

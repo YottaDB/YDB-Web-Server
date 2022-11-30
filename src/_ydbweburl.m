@@ -17,6 +17,7 @@ URLMAP ;
  ;;GET test/utf8/get utf8get^%ydbwebapi
  ;;POST test/utf8/post utf8post^%ydbwebapi
  ;;GET test/json getjson^%ydbwebapi
+ ;;GET test/readwrite readwritetest^%ydbwebapi
  ;;zzzzz
  ;
  ; Copyright (c) 2019 Christopher Edwards
