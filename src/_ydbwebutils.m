@@ -35,7 +35,7 @@ URLDEC(X,PATH) ; Decode a URL-encoded string
  F I=1:1:$L(X,"%") D
  . I I=1 S OUT=$P(X,"%") Q
  . S FRAG=$P(X,"%",I),ASC=$E(FRAG,1,2),FRAG=$E(FRAG,3,$L(FRAG))
- . I $L(ASC) S OUT=OUT_$ZC($$HEX2DEC(ASC))
+ . I $L(ASC) S OUT=OUT_$ZCH($$HEX2DEC(ASC))
  . S OUT=OUT_FRAG
  Q OUT
  ;
