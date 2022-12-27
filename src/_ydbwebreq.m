@@ -9,7 +9,7 @@ start(options) ; set up listening for connections
  ; You can place breakpoints at CHILD+1 or anywhere else.
  if '$data(options("debug"))     set options("debug")=0      ; --debug
  if '$data(options("tlsconfig")) set options("tlsconfig")="" ; --tlsconfig myconfig
- if '$data(options("log"))       set options("log")=1        ; --log n
+ if '$data(options("log"))       set options("log")=0        ; --log n
  if '$data(options("userpass"))  set options("userpass")=""  ; --userpass xxx:yyy
  if '$data(options("nogzip"))    set options("nogzip")=0     ; --nogzip
  if '$data(options("readwrite")) set options("readwrite")=0  ; --readwrite
