@@ -113,33 +113,23 @@ thead ; #TEST HTTP Verb HEAD (only works with GET queries)
  quit
  ;
 tgzip ; @TEST Test gzip encoding
- n httpStatus,return,headers
- d &libcurl.init
- d &libcurl.addHeader("Accept-Encoding: gzip")
- n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/r/%25ydbwebapi",,,1,.headers)
- do CHKEQ^%ut(httpStatus,200)
- do CHKTF^%ut(headers["Content-Encoding: gzip")
- view "nobadchar"
- do CHKTF^%ut(return[$C(0))
- view "badchar"
- quit
- ;
-tnogzipflag ; @TEST Test nogzip flag
  n gzipflagjob
  ;
  ; Start server with no gzip
- job start^%ydbwebreq:cmd="job --port 55732 --nogzip"
+ job start^%ydbwebreq:cmd="job --port 55732 --gzip"
  h .1
  s gzipflagjob=$zjob
  ;
  n httpStatus,return,headers
  d &libcurl.init
- d &libcurl.addHeader("Accept-Encoding: gzip") ; This must be sent to properly test as the server is smart and if we don't send that we support gzip it won't gzip
+ d &libcurl.addHeader("Accept-Encoding: gzip")
  n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55732/test/r/%25ydbwebapi",,,1,.headers)
  do CHKEQ^%ut(httpStatus,200)
- do CHKTF^%ut(headers'["Content-Encoding: gzip")
- do CHKTF^%ut(return["ydbwebapi ; OSE/SMH - Infrastructure web services hooks")
- ;
+ do CHKTF^%ut(headers["Content-Encoding: gzip")
+ view "nobadchar"
+ do CHKTF^%ut(return[$C(0))
+ view "badchar"
+
  ; now stop the webserver again
  open "p":(command="$gtm_dist/mupip stop "_gzipflagjob)::"pipe"
  use "p" r x:1
@@ -147,6 +137,16 @@ tnogzipflag ; @TEST Test nogzip flag
  d CHKEQ^%ut($ZCLOSE,0)
  ;
  kill gzipflagjob
+ quit
+ ;
+tnogzip ; @TEST Test the default nogzip
+ n httpStatus,return,headers
+ d &libcurl.init
+ d &libcurl.addHeader("Accept-Encoding: gzip") ; This must be sent to properly test as the server is smart and if we don't send that we support gzip it won't gzip
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/r/%25ydbwebapi",,,1,.headers)
+ do CHKEQ^%ut(httpStatus,200)
+ do CHKTF^%ut(headers'["Content-Encoding: gzip")
+ do CHKTF^%ut(return["ydbwebapi ; OSE/SMH - Infrastructure web services hooks")
  quit
  ;
 temptynogzip ; @TEST Empty response with no gzip encoding
@@ -550,7 +550,7 @@ EOR ;
  ;
  ; Copyright (c) 2018-2020 Sam Habiel
  ; Copyright (c) 2019 Christopher Edwards
- ; Copyright (c) 2022 YottaDB LLC
+ ; Copyright (c) 2022-2023 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

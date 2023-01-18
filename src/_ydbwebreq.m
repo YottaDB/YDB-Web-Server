@@ -11,7 +11,7 @@ start(options) ; set up listening for connections
  if '$data(options("tlsconfig")) set options("tlsconfig")="" ; --tlsconfig myconfig
  if '$data(options("log"))       set options("log")=0        ; --log n
  if '$data(options("userpass"))  set options("userpass")=""  ; --userpass xxx:yyy
- if '$data(options("nogzip"))    set options("nogzip")=0     ; --nogzip
+ if '$data(options("gzip"))      set options("gzip")=0       ; --gzip
  if '$data(options("readwrite")) set options("readwrite")=0  ; --readwrite
  ;
  ;
@@ -24,7 +24,7 @@ start(options) ; set up listening for connections
  S TLSCONFIG=options("tlsconfig")
  S HTTPLOG=options("log")
  S USERPASS=options("userpass")
- S NOGZIP=options("nogzip")
+ S GZIP=options("gzip")
  S READWRITE=options("readwrite")
  S HTTPREADWRITE=READWRITE ; This is a user exposed variable, so it starts with HTTP
  ;
@@ -33,7 +33,7 @@ start(options) ; set up listening for connections
  WRITE "at logging level "_HTTPLOG_" "
  WRITE:DEBUG "in debug mode "
  WRITE:USERPASS "using a username,password "
- WRITE:NOGZIP "disabling gzip "
+ WRITE:GZIP "enabling gzip "
  WRITE:READWRITE "in readwrite mode "
  WRITE !
  ;
@@ -123,7 +123,7 @@ NEXT ; begin next request
  ;
 WAIT ; wait for request on this connection
  U %WTCP:(delim=$C(13,10):chset="M") ; GT.M Delimiters
- R TCPX:10
+ R TCPX:1
  I '$T G ETDC
  I '$L(TCPX) G ETDC
  ;
@@ -374,7 +374,7 @@ cmdline(options) ; [Private] Process command line options
  ... set options(o)=$$trimleadingdelimstr^%XCMD(.cmdline)
  ... do trimleadingstr^%XCMD(.cmdline," ")
  . ;
- . new o for o="debug","nogzip","readwrite" do
+ . new o for o="debug","gzip","readwrite" do
  .. if $$trimleadingstr^%XCMD(.cmdline,o) set options(o)=1
  . ;
  . if $$trimleadingstr^%XCMD(.cmdline,"tls") do  quit
@@ -388,7 +388,7 @@ cmdline(options) ; [Private] Process command line options
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright (c) 2013-2019 Sam Habiel
  ; Copyright (c) 2018-2019 Christopher Edwards
- ; Copyright (c) 2022 YottaDB LLC
+ ; Copyright (c) 2022-2023 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

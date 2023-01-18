@@ -19,7 +19,7 @@ MWS provides the following features:
 
 # Installation instructions
 ## Dependencies
-- Operational: gzip, date, sed. 
+- Operational: gzip (optional) , date, sed. 
 - Installer only: cmake.
 
 ## Installation

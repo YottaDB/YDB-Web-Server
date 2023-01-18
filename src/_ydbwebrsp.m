@@ -186,7 +186,7 @@ SENDATA ; write out the data as an HTTP response
  I $G(HTTPREQ("method"))="OPTIONS" D W("Access-Control-Max-Age: 86400"_$C(13,10))
  D W("Access-Control-Allow-Origin: *"_$C(13,10))
  ;
- I 'NOGZIP,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
+ I GZIP,$G(HTTPREQ("header","accept-encoding"))["gzip" GOTO GZIP  ; If on GT.M, and we can zip, let's do that!
  ;
  D W("Content-Length: "_SIZE_$C(13,10)_$C(13,10))
  I 'SIZE!(HTTPREQ("method")="HEAD") D FLUSH Q  ; flush buffer and quit if empty
@@ -296,7 +296,7 @@ RSPLINE() ; writes out a response line based on HTTPERR
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright (c) 2013-2020 Sam Habiel
  ; Copyright (c) 2018-2019 Christopher Edwards
- ; Copyright (c) 2022 YottaDB LLC
+ ; Copyright (c) 2022-2023 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.
