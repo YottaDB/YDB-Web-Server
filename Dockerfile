@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 YottaDB LLC
+#   Copyright (c) 2023 YottaDB LLC
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ ENV ydb_chset "utf-8"
 ENV ydb_xc_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.xc"
 RUN mkdir -p /mwebserver/o /mwebserver/r
 ENV ydb_routines "/mwebserver/o*(/mwebserver/r) /opt/yottadb/current/utf8/libyottadbutil.so /opt/yottadb/current/plugin/o/utf8/_ydbmwebserver.so"
-ENV ydb_icu_version "66"
+ENV ydb_icu_version "70"
 
 # Install cURL plugin
 RUN git clone https://github.com/shabiel/fis-gtm-plugins.git
