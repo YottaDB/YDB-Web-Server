@@ -116,8 +116,12 @@ readwritetest ; GET /test/readwrite Tests readwrite flag
  quit
  ;
 FILESYS(ARGPATH) ; Handle reads from File system.
+ ; Ensure Directory has a trailing slash
+ ; Otherwise a directory like $ydb_dist/plugin/etc/ydbgui is not readable
+ I DIRECTORY'="",$E(DIRECTORY,$L(DIRECTORY))'="/" S DIRECTORY=DIRECTORY_"/"
+ ;
  ; get the actual path
- N PATH S PATH=$ZDIRECTORY_ARGPATH
+ N PATH S PATH=DIRECTORY_ARGPATH
  ;
  ; GT.M errors out on file no found
  N $ET S $ET="G FILESYSE"
@@ -193,8 +197,8 @@ FILESYSE ; 500
  QUIT
  ;
  ; Copyright (c) 2013-2020 Sam Habiel
- ; Copyright (c) 2018 Kenneth McLoghlen
- ; Copyright (c) 2022 YottaDB LLC
+ ; Copyright (c) 2018 Kenneth McGlothlen
+ ; Copyright (c) 2022-2023 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

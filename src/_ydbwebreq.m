@@ -3,7 +3,7 @@
  ; Listener Process ---------------------------------------
  ;
 start(options) ; set up listening for connections
- if '$data(options)#2 do cmdline(.options)
+ do cmdline(.options)
  if '$data(options("port"))      set options("port")=9080    ; --port nnnn
  ; DEBUG is so that we run our server in the foreground.
  ; You can place breakpoints at CHILD+1 or anywhere else.
@@ -13,6 +13,7 @@ start(options) ; set up listening for connections
  if '$data(options("userpass"))  set options("userpass")=""  ; --userpass xxx:yyy
  if '$data(options("gzip"))      set options("gzip")=0       ; --gzip
  if '$data(options("readwrite")) set options("readwrite")=0  ; --readwrite
+ if '$data(options("directory")) set options("directory")=$zdirectory ; --directory /x/y/z
  ;
  ;
  ; Enable CTRL-C
@@ -26,9 +27,10 @@ start(options) ; set up listening for connections
  S USERPASS=options("userpass")
  S GZIP=options("gzip")
  S READWRITE=options("readwrite")
+ S DIRECTORY=options("directory")
  S HTTPREADWRITE=READWRITE ; This is a user exposed variable, so it starts with HTTP
  ;
- WRITE "Starting Server at port "_TCPPORT," in directory "_$ZD_" "
+ WRITE "Starting Server at port "_TCPPORT," in directory "_DIRECTORY_" "
  WRITE:TLSCONFIG'="" "using TLS configuration "_TLSCONFIG_" "
  WRITE "at logging level "_HTTPLOG_" "
  WRITE:DEBUG "in debug mode "
@@ -369,7 +371,7 @@ cmdline(options) ; [Private] Process command line options
  do trimleadingstr^%XCMD(.cmdline," ")
  if cmdline="" quit
  for  quit:'$$trimleadingstr^%XCMD(.cmdline,"--")  do ; process options
- . new o for o="port","log","userpass","tlsconfig" do
+ . new o for o="port","log","userpass","tlsconfig","directory" do
  .. if $$trimleadingstr^%XCMD(.cmdline,o) do  quit
  ... set options(o)=$$trimleadingdelimstr^%XCMD(.cmdline)
  ... do trimleadingstr^%XCMD(.cmdline," ")

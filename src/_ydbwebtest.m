@@ -318,10 +318,8 @@ tDCLog ; @TEST Test Log Disconnect
  quit
  ;
 tWebPage ; @TEST Test Getting a web page
- ; Now start a webserver with a new zdirectory of /tmp/
- new oldDir set oldDir=$zd
- set $zd="/tmp/"
- job start^%ydbwebreq:cmd="job --port 55731"
+ ; Now start a webserver with a new directory of /tmp/
+ job start^%ydbwebreq:cmd="job --port 55731 --directory /tmp/"
  hang .1
  new serverjob set serverjob=$zjob
  zsy "mkdir -p /tmp/foo"
@@ -340,7 +338,6 @@ tWebPage ; @TEST Test Getting a web page
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/foo/boo.html")
  d CHKEQ^%ut(httpStatus,200)
  d CHKTF^%ut(return[random)
- set $zd=oldDir
  ; now stop the webserver again
  open "p":(command="$gtm_dist/mupip stop "_serverjob)::"pipe"
  use "p" r x:1
@@ -351,10 +348,8 @@ tWebPage ; @TEST Test Getting a web page
 tHomePage ; @Test Getting index.html page
  n nogblJob
  ;
- ; Now start a webserver with a new zdirectory of /tmp/
- new oldDir set oldDir=$zd
- set $zd="/tmp/"
- job start^%ydbwebreq:cmd="job --port 55731"
+ ; Now start a webserver with a new directory of /tmp/
+ job start^%ydbwebreq:cmd="job --port 55731 --directory /tmp/"
  hang .1
  set nogblJob=$zjob
  new random s random=$R(9817234)
@@ -372,7 +367,6 @@ tHomePage ; @Test Getting index.html page
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/")
  d CHKEQ^%ut(httpStatus,200)
  d CHKTF^%ut(return[random)
- set $zd=oldDir
  open "p":(command="$gtm_dist/mupip stop "_nogblJob)::"pipe"
  use "p" r x:1
  d CHKEQ^%ut($ZCLOSE,0)
