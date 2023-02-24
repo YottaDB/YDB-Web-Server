@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 YottaDB LLC
+#   Copyright (c) 2022-2023 YottaDB LLC
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ set(CMAKE_MODULE_PATH "${ydbcmake_SOURCE_DIR}/ydbcmake/")
 
 project(YDBWebServer
 	LANGUAGES M
-	VERSION 0.0.2)
+	VERSION 2.0.0)
 find_package(YOTTADB REQUIRED)
 
 # Sources
