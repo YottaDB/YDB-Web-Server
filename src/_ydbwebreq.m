@@ -378,6 +378,7 @@ cmdline(options) ; [Private] Process command line options
  . ;
  . new o for o="debug","gzip","readwrite" do
  .. if $$trimleadingstr^%XCMD(.cmdline,o) set options(o)=1
+ .. do trimleadingstr^%XCMD(.cmdline," ")
  . ;
  . if $$trimleadingstr^%XCMD(.cmdline,"tls") do  quit
  .. set options("tls")=1

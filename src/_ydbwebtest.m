@@ -317,6 +317,31 @@ tDCLog ; @TEST Test Log Disconnect
  close "p"
  quit
  ;
+tOptionCombine ; !TEST Test combining options (#113)
+ ; We read a file from /tmp/. If the options were not read properly, then we wouldn't be able to read the file.
+ job start^%ydbwebreq:(cmd="job --port 55731 --gzip --log 3 --directory /tmp/":out="/tmp/sim-stdout5"):5
+ new serverjob set serverjob=$zjob
+ new random s random=$R(9817234)
+ open "/tmp/index.html":(newversion)
+ use "/tmp/index.html"
+ write "<!DOCTYPE html>",!
+ write "<html>",!
+ write "<body>",!
+ write "<h1>My First Heading</h1>",!
+ write "<p>My first paragraph."_random_"</p>",!
+ write "</body>",!
+ write "</html>",!
+ close "/tmp/index.html"
+ n httpStatus,return
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/")
+ d CHKEQ^%ut(httpStatus,200)
+ d CHKTF^%ut(return[random)
+ open "p":(command="$gtm_dist/mupip stop "_serverjob)::"pipe"
+ use "p" r x:1
+ d CHKEQ^%ut($ZCLOSE,0)
+ close "p"
+ quit
+ ;
 tWebPage ; @TEST Test Getting a web page
  ; Now start a webserver with a new directory of /tmp/
  job start^%ydbwebreq:cmd="job --port 55731 --directory /tmp/"
