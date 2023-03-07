@@ -30,6 +30,9 @@ start(options) ; set up listening for connections
  S DIRECTORY=options("directory")
  S HTTPREADWRITE=READWRITE ; This is a user exposed variable, so it starts with HTTP
  ;
+ new PARSTDOUT set PARSTDOUT="/proc/"_$JOB_"/fd/1" ; STDOUT for the parent process (to use for logging to STDOUT)
+ new PARSTDOUTAV set PARSTDOUTAV=$$STDOUTAVAIL(PARSTDOUT) ; Is it available? (boolean)
+ ;
  WRITE "Starting Server at port "_TCPPORT," in directory "_DIRECTORY_" "
  WRITE:TLSCONFIG'="" "using TLS configuration "_TLSCONFIG_" "
  WRITE "at logging level "_HTTPLOG_" "
@@ -38,6 +41,7 @@ start(options) ; set up listening for connections
  WRITE:GZIP "enabling gzip "
  WRITE:READWRITE "in readwrite mode "
  WRITE !
+ if HTTPLOG,'PARSTDOUTAV write "Logging will be disabled as "_PARSTDOUT_" is not writable",!
  ;
  ; Device ID
  S TCPIO="SCK$"_TCPPORT
@@ -48,7 +52,6 @@ start(options) ; set up listening for connections
  U TCPIO:(CHSET="M")
  ;
  W /LISTEN(5) ; Listen 5 deep - sets $KEY to "LISTENING|socket_handle|portnumber"
- N PARSTDOUT S PARSTDOUT="/proc/"_$JOB_"/fd/1" ; STDOUT for the parent process (to use for logging to STDOUT)
  N PPID S PPID=$JOB ; Parent PID for the child process
  N PARSOCK S PARSOCK=$P($KEY,"|",2)  ; Parent socket
  N CHILDSOCK  ; That will be set below; Child socket
@@ -292,6 +295,7 @@ LOGERR ; log error information
  ;
 STDOUT(MSG) ; [Internal] Log to STDOUT
  ; 127.0.0.1 - - [02/Sep/2022 11:03:33] "GET / HTTP/1.1" 200 -
+ QUIT:'PARSTDOUTAV ; Device not writable
  N OLDIO S OLDIO=$IO
  O PARSTDOUT U PARSTDOUT
  W HTTPREMOTEIP," - - [",$ZDATE($H,"DD/MON/YYYY 12:60:SS AM"),"] "
@@ -300,11 +304,17 @@ STDOUT(MSG) ; [Internal] Log to STDOUT
  QUIT
  ;
 STDOUTZW(V)
+ QUIT:'PARSTDOUTAV ; Device not writable
  N OLDIO S OLDIO=$IO
  O PARSTDOUT U PARSTDOUT
  ZWRITE @V
  U OLDIO C PARSTDOUT
  QUIT
+ ;
+STDOUTAVAIL(D) ; $$ Is STDOUT available to write to?
+ new $etrap set $etrap="set $ecode="""" quit 0"
+ open PARSTDOUT close PARSTDOUT
+ quit 1
  ;
 stop(options) ; tell the listener to stop running
  if '$data(options)#2 do cmdline(.options)
