@@ -19,7 +19,7 @@ MWS provides the following features:
 
 # Installation instructions
 ## Dependencies
-- Operational: gzip (optional) , date, sed. 
+- Operational: gzip (optional), date, sed. 
 - Installer only: cmake.
 
 ## Installation
@@ -46,15 +46,38 @@ Run the following in the same build directory:
 ```
 
 # Starting and Stopping the Server
-To start the server, run `$ydb_dist/yottadb -run start^%webreq` (with --port <nnnn>). If you don't
+To start the server, run `$ydb_dist/yottadb -run start^%ydbwebreq` (with --port <nnnn>). If you don't
 specify a port, it will start at port number 9080.
 
-You can stop the server using `$ydb_dist/yottadb -run stop^%webreq [--port <nnnn>]`.
+You can stop the server using `$ydb_dist/yottadb -run stop^%ydbwebreq [--port <nnnn>]`.
+
+A full list of the options accepted is as follows:
+
+* `--debug` Start server in non-forking mode with $ETRAP set to BREAK. Server
+  will only handle a single request before terminating. Use this to debug
+  problems with the web server.
+* `--directory /x/y/z` Serve static files from directory /x/y/z.
+* `--gzip` Enable gzipping from the server side. The default is to not gzip.
+  Gzipping used the `/dev/shm` file system for temporary files; if the space is
+  limited (e.g. in docker images), you may face problems with gzipping.
+* `--log n` A logging level. By default the level is 0. It can be 0-3, with 3
+  being most verbose.
+* `--port nnn` port to listen on.
+* `--tlsconfig tls-config-name` A TLS configuration with a name in the
+  `ydb_crypt_config` file. TLS set-up is somewhat complex. See
+  https://docs.yottadb.com/ProgrammersGuide/ioproc.html#tls-on-yottadb for
+  instructions, and [Dockerfile](Dockerfile) and
+  [docker-startup.sh](docker-configuration/docker-startup.sh) for its
+  implementation.
+* `--tls client`. Only used by `stop^%ydbwebreq`. Will be deprecated in favor
+  of `--tlsconfig`.
+* `--readwrite` An application level flag to indicate that an application is
+  readwrite. The flag does not change any of the behavior of the web server
+  itself. 
+* `--userpass xxx:yyy` Don't use. Will be deprecated soon.
 
 # Developer Documentation
 See the [doc](doc) folder.
-
-To make a new version, see [doc/packaging.md](doc/packaging.md).
 
 To set-up TLS, see [doc/tls-setup.md](doc/tls-setup.md).
 
