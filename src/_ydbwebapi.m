@@ -77,6 +77,22 @@ version ; GET /version returns version information
  set httprsp("version")=$$version^%ydbwebversion
  quit
  ;
+login ; POST /login { "username": "xxx", "password": "pass" }
+ new username set username=$get(httpreq("json","username"))
+ new password set password=$get(httpreq("json","password"))
+ if (username="")!(password="") do setError^%ydbwebutils(401,"Unauthorized") QUIT
+ new temptoken set temptoken=$$token^%ydbwebusers(username,password)
+ if $data(TOKENCACHE(temptoken)) set httprsp("token")=temptoken
+ else  do setError^%ydbwebutils(401,"Unauthorized")
+ quit
+ ;
+logout ; POST /logout { "token" : "xxx" }
+ ; TODO: Test
+ new token set token=$get(httpreq("json","token"))
+ if $data(TOKENCACHE(token)) kill TOKENCACHE(token) set httprsp("status")="OK" quit
+ else  set httprsp("status")="token not found" quit
+ quit
+ ;
 xml ; GET /test/xml XML sample
  set httprsp("mime")="text/xml"
  set httprsp(1)="<?xml version=""1.0"" encoding=""UTF-8""?>"
@@ -117,6 +133,15 @@ posttest ; POST /test/post Simple test for post
 readwritetest ; GET /test/readwrite Tests readwrite flag
  set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  set httprsp=HTTPREADWRITE ; 0 or 1
+ quit
+ ;
+simtimeout ; GET /test/simtimeout Simulate Timeout (for now, needs to happen in the same curl process)
+ new token set token=$piece(HTTPREQ("header","authorization"),"Bearer ",2,99)
+ new oldut set oldut=$piece(TOKENCACHE(token),"^")
+ new newut set newut=oldut-((15*60*1000*1000)-60)
+ set $piece(TOKENCACHE(token),"^")=newut
+ set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+ set httprsp=oldut_"^"_newut_$c(10,13)
  quit
  ;
 FILESYS(ARGPATH) ; Handle reads from File system.

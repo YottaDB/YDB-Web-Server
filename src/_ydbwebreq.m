@@ -2,29 +2,40 @@
  ;
  ; Listener Process ---------------------------------------
  ;
+ goto start2
+ ;
 start(options) ; set up listening for connections
+start2 ; From the top
  do cmdline(.options)
- if '$data(options("port"))      set options("port")=9080    ; --port nnnn
+ ;
+ if '$data(options("port"))      set options("port")=9080              ; --port nnnn
+ ;
  ; DEBUG is so that we run our server in the foreground.
  ; You can place breakpoints at CHILD+1 or anywhere else.
- if '$data(options("debug"))     set options("debug")=0      ; --debug
- if '$data(options("tlsconfig")) set options("tlsconfig")="" ; --tlsconfig myconfig
- if '$data(options("log"))       set options("log")=0        ; --log n
- if '$data(options("userpass"))  set options("userpass")=""  ; --userpass xxx:yyy
- if '$data(options("gzip"))      set options("gzip")=0       ; --gzip
- if '$data(options("readwrite")) set options("readwrite")=0  ; --readwrite
- if '$data(options("directory")) set options("directory")=$zdirectory ; --directory /x/y/z
+ if '$data(options("debug"))      set options("debug")=0               ; --debug
+ if '$data(options("tlsconfig"))  set options("tlsconfig")=""          ; --tlsconfig myconfig
+ if '$data(options("log"))        set options("log")=0                 ; --log n
+ if '$data(options("gzip"))       set options("gzip")=0                ; --gzip
+ if '$data(options("readwrite"))  set options("readwrite")=0           ; --readwrite
+ if '$data(options("directory"))  set options("directory")=$zdirectory ; --directory /x/y/z
  ;
+ ; Authentication/Authorization Options
+ if '$data(options("auth-stdin")) set options("auth-stdin")=0          ; --auth-stdin
  ;
  ; Enable CTRL-C
- U $p:(ctrap=$char(3):exception="use $p write ""Caught Ctrl-C, stopping..."",! HALT")
+ use $p:(ctrap=$char(3):exception="use $p write ""Caught Ctrl-C, stopping..."",! HALT")
+ ;
+ ; Global variable
+ set STARTUPZUT=$ZUT
+ ;
+ if options("auth-stdin")        do stdin^%ydbwebusers  set HTTPHASUSERS=1
+ if $ztrnlnm("ydbgui_users")'="" do env^%ydbwebusers    set HTTPHASUSERS=1
  ;
  ; Initialize the variables
  S TCPPORT=options("port")
  S DEBUG=options("debug")
  S TLSCONFIG=options("tlsconfig")
  S HTTPLOG=options("log")
- S USERPASS=options("userpass")
  S GZIP=options("gzip")
  S READWRITE=options("readwrite")
  S DIRECTORY=options("directory")
@@ -37,7 +48,7 @@ start(options) ; set up listening for connections
  WRITE:TLSCONFIG'="" "using TLS configuration "_TLSCONFIG_" "
  WRITE "at logging level "_HTTPLOG_" "
  WRITE:DEBUG "in debug mode "
- WRITE:USERPASS "using a username,password "
+ WRITE:$data(TOKENCACHE) "using authentication "
  WRITE:GZIP "enabling gzip "
  WRITE:READWRITE "in readwrite mode "
  WRITE !
@@ -59,12 +70,12 @@ start(options) ; set up listening for connections
  I DEBUG D DEBUG(TLSCONFIG)
  ;
 LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
+ ;
  ; ----- GT.M CODE ----
  ; In GT.M $KEY is "CONNECT|socket_handle|portnumber" then "READ|socket_handle|portnumber"
  ;
- ; Wait until we have a connection (inifinte wait). 
- ; Stop if the listener asked us to stop.
- FOR  W /WAIT(10) Q:$KEY]""
+ ; Wait until we have a connection. Every 10 seconds of inactivity, clean-up the tokens.
+ FOR  W /WAIT(10) Q:$KEY]""  D TOKENCLEANUP
  ;
  ; At connection, job off the new child socket to be served away.
  I $P($KEY,"|")="CONNECT" D  ; >=6.1
@@ -77,6 +88,35 @@ LOOP ; wait for connection, spawn process to handle it. GOTO favorite.
  . J @J
  G LOOP
  QUIT
+ ;
+TOKENCLEANUP ; Clean-up old tokens
+ QUIT  ; Not implementing right now as it will expire the static tokens after 15 minutes.
+ N HTTPREMOTEIP S HTTPREMOTEIP="<PARENT>"
+ I HTTPLOG>1 D STDOUT("Cleaning Tokens")
+ ;
+ ; 15 minutes ago in ZUT
+ ; cutoffZUT is in the past (that's why it's a minus from now, not a plus)
+ new currentZUT set currentZUT=$ZUT
+ new timeout   set timeout=15*60*1000*1000
+ if $ztrnlnm("ydbgui_test_token_cleanup")'="" set timeout=1*1000*1000 ; that's 1 second
+ new cutoffZUT set cutoffZUT=currentZUT-timeout
+ ;
+ ; Set iterator to start from the cutoff time
+ new zutIter set zutIter=cutoffZUT
+ ;
+ ; Loop from cutoff time to times that are smaller (older) in the past.
+ for  set zutIter=$order(TOKENCACHE("timeindex",zutIter),-1) quit:zutIter=""  do
+ . new eachToken set eachToken=""
+ . ;tstart ():transactionid="batch"
+ . for  set eachToken=$order(TOKENCACHE("timeindex",zutIter,eachToken)) quit:eachToken=""  kill TOKENCACHE(eachToken)
+ . kill TOKENCACHE("timeindex",zutIter)
+ . ;tcommit
+ ;
+ I HTTPLOG>2 D 
+ . D STDOUT("Token Cache: ")
+ . I $DATA(TOKENCACHE) D STDOUTZW($NAME(TOKENCACHE))
+ . E  D STDOUT("--EMPTY")
+ quit
  ;
 DEBUG(TLSCONFIG) ; Debug continuation. We don't job off the request, rather run it now.
  ; Stop using Ctrl-C
@@ -133,9 +173,9 @@ WAIT ; wait for request on this connection
  I '$L(TCPX) G ETDC
  ;
  ; -- got a request and have the first line
- I HTTPLOG>2 D LOGRAW(TCPX)
- I HTTPLOG>1 D LOGHDR(TCPX)
- I HTTPLOG>0 D LOGREQ(TCPX)
+ I HTTPLOG>2 D LOGRAW(TCPX) ; 3 and higher print everything
+ I HTTPLOG>1 D LOGHDR(TCPX) ; 2 and higher print logs
+ I HTTPLOG>0 D LOGREQ(TCPX) ; 1 and higher print requests
  ;
  S HTTPREQ("method")=$P(TCPX," ")
  S HTTPREQ("path")=$P($P(TCPX," ",2),"?")
@@ -381,12 +421,12 @@ cmdline(options) ; [Private] Process command line options
  do trimleadingstr^%XCMD(.cmdline," ")
  if cmdline="" quit
  for  quit:'$$trimleadingstr^%XCMD(.cmdline,"--")  do ; process options
- . new o for o="port","log","userpass","tlsconfig","directory" do
+ . new o for o="port","log","tlsconfig","directory" do
  .. if $$trimleadingstr^%XCMD(.cmdline,o) do  quit
  ... set options(o)=$$trimleadingdelimstr^%XCMD(.cmdline)
  ... do trimleadingstr^%XCMD(.cmdline," ")
  . ;
- . new o for o="debug","gzip","readwrite" do
+ . new o for o="debug","gzip","readwrite","auth-stdin" do
  .. if $$trimleadingstr^%XCMD(.cmdline,o) set options(o)=1
  .. do trimleadingstr^%XCMD(.cmdline," ")
  . ;

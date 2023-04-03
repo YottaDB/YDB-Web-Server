@@ -18,11 +18,12 @@ URLMAP ;
  ;;POST test/utf8/post utf8post^%ydbwebapi
  ;;GET test/json getjson^%ydbwebapi
  ;;GET test/readwrite readwritetest^%ydbwebapi
+ ;;GET test/simtimeout simtimeout^%ydbwebapi
  ;;zzzzz
  ;
  ; Copyright (c) 2019 Christopher Edwards
  ; Copyright (c) 2019 Sam Habiel
- ; Copyright (c) 2022 YottaDB LLC
+ ; Copyright (c) 2022-2023 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

@@ -320,6 +320,7 @@ tDCLog ; @TEST Test Log Disconnect
 tOptionCombine ; @TEST Test combining options (#113)
  ; We read a file from /tmp/. If the options were not read properly, then we wouldn't be able to read the file.
  job start^%ydbwebreq:(cmd="job --port 55731 --gzip --log 3 --directory /tmp/":out="/tmp/sim-stdout5"):5
+ hang .1
  new serverjob set serverjob=$zjob
  new random s random=$R(9817234)
  open "/tmp/index.html":(newversion)
@@ -422,29 +423,97 @@ CORS ; @TEST Make sure CORS headers are returned
  d CHKEQ^%ut($g(headerarray("Access-Control-Allow-Origin")),"*")
  quit
  ;
-USERPASS ; @TEST Test that passing a username/password works
- n passwdJob
+login ; @TEST Test that logging in/tokens/logging out works
+ new passwdJob,status,payload,httpStatus,return
  ;
- ; Now start a webserver with a passed username/password
- j start^%ydbwebreq:cmd="job --port 55730 --userpass admin:admin"
- h .1
- s passwdJob=$zjob
+ ; Now start a webserver with a username/password passed in $ydbgui_users
+ view "setenv":"ydbgui_users":"admin:pass:RW"
+ job start^%ydbwebreq:cmd="job --port 55730"
+ hang .1
+ set passwdJob=$zjob
  ;
- n httpStatus,return
+ ; Negative test - No authentication: 403 - Forbidden
+ ; Data not returned
+ set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/xml")
+ do eq^%ut(httpStatus,403,1)
+ do tf^%ut(return'["<?xml",2)
  ;
- ; Positive test
- d &libcurl.init
- d &libcurl.auth("Basic","admin:admin")
- d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/ping")
- d &libcurl.cleanup
- d CHKEQ^%ut(httpStatus,200)
+ ; Now login with bad un/pw
+ ; Expect 401 Unauthorized
+ set payload="{ ""username"" : ""admin"", ""password"" : ""foo"" }"
+ do &libcurl.init
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,401,3)
  ;
- ; Negative test
- d &libcurl.init
- d &libcurl.auth("Basic","admin:12345")
- d &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/ping")
- d &libcurl.cleanup
- d CHKEQ^%ut(httpStatus,401)
+ ; Now login with good un/pw
+ set payload="{ ""username"" : ""admin"", ""password"" : ""pass"" }"
+ do &libcurl.init
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,4)
+ ;
+ ; Get the token out of the json in `return`
+ ; We don't need to assert anything as the code will crash if returnjson is not properly formatted
+ new returnjson do decode^%ydbwebjson($name(return),$name(returnjson))
+ new token set token=returnjson("token")
+ ;
+ ; Now get the XML using the token
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/xml")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,5)
+ do tf^%ut(return["<?xml",6)
+ ;
+ ; Get ReadWrite flag that is assigned to the user
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/readwrite")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,7)
+ do eq^%ut(return,1,8)
+ ;
+ ; Try the same code with a bad token
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token_" ")
+ set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/readwrite")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,403,9)
+ ;
+ ; Try simulated timeout call
+ ; This call manipulates the TOKENCACHE to expire the current token so the first call works, but second call won't due to timeout
+ ; To ensure that this code works, we do two calls in the same curl session (between .init and .cleanup)
+ ; TODO: There seems to be a bug in the curl plugin causing it to crash on the second call.
+ ;       So this test doesn't do what it's supposed to show; But a manual test shows that this works.
+ ; 
+ new httpStatus1,httpStatus2
+ new return1,return2
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ set status1=$&libcurl.do(.httpStatus1,.return1,"GET","http://127.0.0.1:55730/test/simtimeout")
+ ;set status2=$&libcurl.do(.httpStatus2,.return2,"GET","http://127.0.0.1:55730/test/simtimeout")
+ do &libcurl.cleanup
+ ;
+ ; Logout with a valid token
+ set payload="{ ""token"" : """_token_"""}"
+ do &libcurl.init
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/logout",payload,"application/json")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,10)
+ new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
+ do eq^%ut(logoutoutput("status"),"OK",11)
+ ;
+ ; Logout with invalid token - httpStatus is 200; but status is "token not found"
+ set payload="{ ""token"" : """_token_"xx ""}"
+ do &libcurl.init
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/logout",payload,"application/json")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,12)
+ new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
+ do eq^%ut(logoutoutput("status"),"token not found",13)
+ ;
+ ; Test timeout TODO
  ;
  ; now stop the webserver again
  open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
@@ -453,6 +522,7 @@ USERPASS ; @TEST Test that passing a username/password works
  d CHKEQ^%ut($ZCLOSE,0)
  ;
  kill passwdJob
+ view "unsetenv":"ydbgui_users":"admin:pass:RW"
  quit
  ;
 tpost ; @TEST simple post
@@ -523,14 +593,14 @@ tEtag1 ; @TEST Test caching with Etag
  open f:newversion use f
  write "test",!
  close f
- new httpStatus,return,headers
+ new httpStatus,return
  ;I found out the ETag generated by running this first
  ;do &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test.txt",,,,.headers)
  ;zwrite httpStatus,return,headers
  ;
  d &libcurl.init
  d &libcurl.addHeader("If-None-Match: 0x88375a6109328211d2e5093f3162e517")
- n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test.txt",,,,.headers)
+ n status s status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test.txt")
  do CHKEQ^%ut(httpStatus,304)
  ;
  quit

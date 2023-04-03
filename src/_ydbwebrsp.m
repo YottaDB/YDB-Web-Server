@@ -87,33 +87,69 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  S ROUTINE=""  ; Default. Routine not found. Error 404.
  ;
  ; Using _ydbweburl.m
- DO MATCHR(.ROUTINE,.ARGS)
+ NEW AUTHNEEDED SET AUTHNEEDED=0 ; by default, no authorization needed
+ ;
+ ; Match against the %ydbweburl file
+ DO MATCHR(.ROUTINE,.ARGS,.AUTHNEEDED)
  ;
  ; If that failed, try matching against a file on the file system
- I ROUTINE="" DO MATCHFS(.ROUTINE)
+ ; No authorization needed to serve web pages
+ I ROUTINE="" SET AUTHNEEDED=0 DO MATCHFS(.ROUTINE)
  ;
  ; Okay. Do we have a routine to execute?
  I ROUTINE="" D SETERROR^%ydbwebutils(404,"Not Found") QUIT
  ;
- I $G(USERPASS)'="" D
- . ; user must authenticate
- . S HTTPRSP("auth")="Basic realm="""_HTTPREQ("header","host")_"""" ; Send Authentication Header
- . N AUTHEN S AUTHEN=(USERPASS=$$DECODE64^%ydbwebutils($P($G(HTTPREQ("header","authorization"))," ",2))) ; Try to authenticate
- . I 'AUTHEN D SETERROR^%ydbwebutils(401,"Unauthorized") QUIT  ; Unauthoirzed
+ ; If we need authorization, and we have users on the system...
+ if AUTHNEEDED,$data(HTTPHASUSERS) do
+ . new authenticated set authenticated=0
+ . new timedout set timedout=0
+ . ;
+ . ; See if we have a token
+ . if $get(HTTPREQ("header","authorization"))'="" do
+ .. new token set token=$piece(HTTPREQ("header","authorization"),"Bearer ",2,99)
+ .. ; If the token exists in our cache
+ .. if $data(TOKENCACHE(token)) do
+ ... ; We are authenticated now
+ ... set authenticated=1
+ ... ;
+ ... ; At this point we have a valid token... check if it's expired
+ ... new currentZUT set currentZUT=$ZUT
+ ... new tokenZUT   set tokenZUT=$piece(TOKENCACHE(token),"^")
+ ... new zutdiff    set zutdiff=currentZUT-tokenZUT
+ ... ;
+ ... ; TODO: ENABLE this when we have a way to generate emphmeral tokens
+ ... ;       If we keep this now, any user using the web server with authentication will time out after 15 minutes
+ ... ; 15*60*1000*1000 = 15 minutes translated to microseconds
+ ... ; if zutdiff>(15*60*1000*1000) do STDOUT^%ydbwebreq("Timed out: "_currentZUT_" "_tokenZUT_" "_zutdiff) set timedout=1 QUIT  ; Timed out
+ ... set $piece(TOKENCACHE(token),"^")=$ZUT ; Update token expiration time
+ ... ;
+ ... ; Set User Authorization based on user data in the token cache
+ ... if $piece(TOKENCACHE(token),"^",2)="RW" set HTTPREADWRITE=1
+ ... else  set HTTPREADWRITE=0
+ ... ;
+ . if 'authenticated do setError^%ydbwebutils(403,"Forbidden")     QUIT
+ . if timedout       do setError^%ydbwebutils(403,"Token timeout") QUIT
  QUIT
  ;
  ;
-MATCHR(ROUTINE,ARGS) ; Match against _ydbweburl.m
+MATCHR(ROUTINE,ARGS,AUTHNEEDED) ; Match against _ydbweburl.m
  N METHOD S METHOD=HTTPREQ("method")
  I METHOD="HEAD" S METHOD="GET" ; just for here
  N PATH S PATH=HTTPREQ("path")
  S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
  ;
- ; Special processing for ping, version. It should be always available
- I METHOD="GET",PATH="ping" S ROUTINE="ping^%ydbwebapi" QUIT
+ ; Special processing for ping, version, login, logout. They should be always available.
+ S AUTHNEEDED=0
+ I METHOD="GET",PATH="ping"    S ROUTINE="ping^%ydbwebapi" QUIT
  I METHOD="GET",PATH="version" S ROUTINE="version^%ydbwebapi" QUIT
+ I METHOD="POST",PATH="login"  S ROUTINE="login^%ydbwebapi" QUIT
+ I METHOD="POST",PATH="logout" S ROUTINE="logout^%ydbwebapi" QUIT
  ;
  I $T(^%ydbweburl)="" S ROUTINE="" QUIT
+ ;
+ ; We probably want authorization to be part of the URL file; not global for all services.
+ ; Tracked by issue #118
+ S AUTHNEEDED=1
  ;
  N SEQ,PATMETHOD
  N DONE S DONE=0
@@ -290,6 +326,7 @@ RSPLINE() ; writes out a response line based on HTTPERR
  I '$G(HTTPERR),$D(HTTPRSP("location")) Q "HTTP/1.1 201 Created"
  I $G(HTTPERR)=400 Q "HTTP/1.1 400 Bad Request"
  I $G(HTTPERR)=401 Q "HTTP/1.1 401 Unauthorized"
+ I $G(HTTPERR)=403 Q "HTTP/1.1 403 Forbidden"
  I $G(HTTPERR)=404 Q "HTTP/1.1 404 Not Found"
  I $G(HTTPERR)=405 Q "HTTP/1.1 405 Method Not Allowed"
  Q "HTTP/1.1 500 Internal Server Error"

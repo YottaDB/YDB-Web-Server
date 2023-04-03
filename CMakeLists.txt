@@ -46,6 +46,7 @@ set(source_files
   src/_ydbwebreq.m
   src/_ydbwebrsp.m
   src/_ydbwebutils.m
+  src/_ydbwebusers.m
   ${CMAKE_CURRENT_BINARY_DIR}/src/_ydbwebversion.m
 )
 
