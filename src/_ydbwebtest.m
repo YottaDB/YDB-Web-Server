@@ -317,7 +317,7 @@ tDCLog ; @TEST Test Log Disconnect
  close "p"
  quit
  ;
-tOptionCombine ; !TEST Test combining options (#113)
+tOptionCombine ; @TEST Test combining options (#113)
  ; We read a file from /tmp/. If the options were not read properly, then we wouldn't be able to read the file.
  job start^%ydbwebreq:(cmd="job --port 55731 --gzip --log 3 --directory /tmp/":out="/tmp/sim-stdout5"):5
  new serverjob set serverjob=$zjob
@@ -553,7 +553,17 @@ tReadWrite ; @TEST Test read-write flag
  close "p"
  do CHKEQ^%ut($ZCLOSE,0)
  quit
- 
+ ;
+tVersion ; @TEST version
+ new httpStatus,return
+ ;
+ ; Default status is zero
+ new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/version")
+ do eq^%ut(httpStatus,200)
+ do decode^%ydbwebjson($name(return),$name(version))
+ do tf^%ut($data(version("version")))
+ quit
+ ;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
  new options set options("port")=55728
  do stop^%ydbwebreq(.options)

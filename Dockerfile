@@ -47,6 +47,7 @@ RUN git clone https://gitlab.com/YottaDB/Tools/YDBCMake.git
 # Install YDB-Web-Server
 COPY src/ src/
 COPY CMakeLists.txt .
+COPY _ydbmwebserver.manifest.json.in .
 RUN mkdir build && cd build && cmake -D FETCHCONTENT_SOURCE_DIR_YDBCMAKE=../YDBCMake .. && make install
 
 # Copy these files which are not installed by default

@@ -30,8 +30,11 @@ set(CMAKE_MODULE_PATH "${ydbcmake_SOURCE_DIR}/ydbcmake/")
 
 project(YDBWebServer
 	LANGUAGES M
-	VERSION 2.0.1)
+	VERSION 2.0.2)
 find_package(YOTTADB REQUIRED)
+
+configure_file(src/_ydbwebversion.m.in src/_ydbwebversion.m @ONLY)
+configure_file(_ydbmwebserver.manifest.json.in _ydbmwebserver.manifest.json @ONLY)
 
 # Sources
 set(source_files
@@ -43,7 +46,12 @@ set(source_files
   src/_ydbwebreq.m
   src/_ydbwebrsp.m
   src/_ydbwebutils.m
+  ${CMAKE_CURRENT_BINARY_DIR}/src/_ydbwebversion.m
 )
 
 add_ydb_library(_ydbmwebserver SOURCES ${source_files})
 install_ydb_library(_ydbmwebserver)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/_ydbmwebserver.manifest.json DESTINATION ${YOTTADB_M_PLUGIN_DIR})
+if(ydb_icu_version)
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/_ydbmwebserver.manifest.json DESTINATION ${YOTTADB_M_PLUGIN_DIR}/utf8)
+endif()

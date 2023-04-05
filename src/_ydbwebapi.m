@@ -73,6 +73,10 @@ ping ; GET /ping writes out a ping response
  set httprsp("server","\s")=""
  quit
  ;
+version ; GET /version returns version information
+ set httprsp("version")=$$version^%ydbwebversion
+ quit
+ ;
 xml ; GET /test/xml XML sample
  set httprsp("mime")="text/xml"
  set httprsp(1)="<?xml version=""1.0"" encoding=""UTF-8""?>"

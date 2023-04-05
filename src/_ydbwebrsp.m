@@ -109,8 +109,9 @@ MATCHR(ROUTINE,ARGS) ; Match against _ydbweburl.m
  N PATH S PATH=HTTPREQ("path")
  S:$E(PATH)="/" PATH=$E(PATH,2,$L(PATH))
  ;
- ; Special processing for ping. It should be always available
+ ; Special processing for ping, version. It should be always available
  I METHOD="GET",PATH="ping" S ROUTINE="ping^%ydbwebapi" QUIT
+ I METHOD="GET",PATH="version" S ROUTINE="version^%ydbwebapi" QUIT
  ;
  I $T(^%ydbweburl)="" S ROUTINE="" QUIT
  ;

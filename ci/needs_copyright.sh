@@ -1,5 +1,5 @@
 #!/bin/sh
-#   Copyright (c) 2022 YottaDB LLC
+#   Copyright (c) 2022-2023 YottaDB LLC
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -36,7 +36,9 @@ fi
 # Returns 0 if it needs a copyright and 1 otherwise.
 skiplist="LICENSE
 	NOTICE
-	README.md"
+	README.md
+	_ydbmwebserver.manifest.json.in
+	"
     for skipfile in $skiplist; do
 	if [ "$file" = "$skipfile" ]; then
 		exit 1

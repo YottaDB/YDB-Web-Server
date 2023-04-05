@@ -1,0 +1,5 @@
+{
+  "description": "YottaDB Web Server shared library",
+  "version": "@YDBWebServer_VERSION@",
+  "vendor": "YottaDB"
+}
