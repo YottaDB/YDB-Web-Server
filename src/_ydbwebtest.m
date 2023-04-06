@@ -332,10 +332,17 @@ tOptionCombine ; @TEST Test combining options (#113)
  write "</body>",!
  write "</html>",!
  close "/tmp/index.html"
- n httpStatus,return
- d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/")
- d CHKEQ^%ut(httpStatus,200)
- d CHKTF^%ut(return[random)
+ do &libcurl.init
+ do &libcurl.addHeader("Accept-Encoding: gzip")
+ new httpStatus,return
+ new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55731/",,,1,.headers)
+ do eq^%ut(httpStatus,200)
+ do tf^%ut(headers["Content-Encoding: gzip")
+ ; Data is zipped, so we can't see inside it unless we unzip it.
+ view "nobadchar"
+ do tf^%ut(return[$C(0))
+ view "badchar"
+ ;
  open "p":(command="$gtm_dist/mupip stop "_serverjob)::"pipe"
  use "p" r x:1
  d CHKEQ^%ut($ZCLOSE,0)
