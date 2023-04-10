@@ -100,7 +100,7 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  I ROUTINE="" D SETERROR^%ydbwebutils(404,"Not Found") QUIT
  ;
  ; If we need authorization, and we have users on the system...
- if AUTHNEEDED,$data(HTTPHASUSERS) do
+ if AUTHNEEDED,HTTPHASUSERS do
  . new authenticated set authenticated=0
  . new timedout set timedout=0
  . ;
@@ -108,25 +108,24 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  . if $get(HTTPREQ("header","authorization"))'="" do
  .. new token set token=$piece(HTTPREQ("header","authorization"),"Bearer ",2,99)
  .. ; If the token exists in our cache
- .. if $data(TOKENCACHE(token)) do
- ... ; We are authenticated now
- ... set authenticated=1
- ... ;
- ... ; At this point we have a valid token... check if it's expired
- ... new currentZUT set currentZUT=$ZUT
- ... new tokenZUT   set tokenZUT=$piece(TOKENCACHE(token),"^")
- ... new zutdiff    set zutdiff=currentZUT-tokenZUT
- ... ;
- ... ; TODO: ENABLE this when we have a way to generate emphmeral tokens
- ... ;       If we keep this now, any user using the web server with authentication will time out after 15 minutes
- ... ; 15*60*1000*1000 = 15 minutes translated to microseconds
- ... ; if zutdiff>(15*60*1000*1000) do STDOUT^%ydbwebreq("Timed out: "_currentZUT_" "_tokenZUT_" "_zutdiff) set timedout=1 QUIT  ; Timed out
- ... set $piece(TOKENCACHE(token),"^")=$ZUT ; Update token expiration time
- ... ;
- ... ; Set User Authorization based on user data in the token cache
- ... if $piece(TOKENCACHE(token),"^",2)="RW" set HTTPREADWRITE=1
- ... else  set HTTPREADWRITE=0
- ... ;
+ .. tstart ():transactionid="batch"
+ ..   if $$checkIfTokenExists^%ydbwebusers(token) do
+ ...   ; We are authenticated now
+ ...   set authenticated=1
+ ...   ;
+ ...   ; Check if token is expired
+ ...   if $$checkIfTokenIsExpired^%ydbwebusers(token) do  QUIT
+ ....   do STDOUT^%ydbwebreq("Token "_token_" timed out") 
+ ....   set timedout=1
+ ...   ;
+ ...   ; Update Token timeout
+ ...   do updateTokenTimeout^%ydbwebusers(token)
+ ...   ;
+ ...   ; Set User Authorization based on user data in the token cache
+ ...   if $$getAuthorizationFromToken^%ydbwebusers(token)="RW" set HTTPREADWRITE=1
+ ...   else  set HTTPREADWRITE=0
+ ...   ;
+ .. tcommit
  . if 'authenticated do setError^%ydbwebutils(403,"Forbidden")     QUIT
  . if timedout       do setError^%ydbwebutils(403,"Token timeout") QUIT
  QUIT

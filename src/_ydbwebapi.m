@@ -81,16 +81,26 @@ login ; POST /login { "username": "xxx", "password": "pass" }
  new username set username=$get(httpreq("json","username"))
  new password set password=$get(httpreq("json","password"))
  if (username="")!(password="") do setError^%ydbwebutils(401,"Unauthorized") QUIT
- new temptoken set temptoken=$$token^%ydbwebusers(username,password)
- if $data(TOKENCACHE(temptoken)) set httprsp("token")=temptoken
- else  do setError^%ydbwebutils(401,"Unauthorized")
+ ;
+ new hash set hash=$$hash^%ydbwebusers(username,password,STARTUPZUT)
+ ;
+ tstart ():transactionid="batch"
+   if $$checkIfUserExists^%ydbwebusers(hash) do
+   . new authorization set authorization=$$getAuthorizationFromUser^%ydbwebusers(hash)
+   . set httprsp("token")=$$generateToken^%ydbwebusers(hash)
+   . do storeToken^%ydbwebusers(httprsp("token"),authorization)
+   else  do setError^%ydbwebutils(401,"Unauthorized")  ; Invalid
+ tcommit
  quit
  ;
 logout ; POST /logout { "token" : "xxx" }
- ; TODO: Test
  new token set token=$get(httpreq("json","token"))
- if $data(TOKENCACHE(token)) kill TOKENCACHE(token) set httprsp("status")="OK" quit
- else  set httprsp("status")="token not found" quit
+ tstart ():transactionid="batch"
+   if $$checkIfTokenExists^%ydbwebusers(token) do
+   . do deleteToken^%ydbwebusers(token)
+   . set httprsp("status")="OK"
+   else  set httprsp("status")="token not found"
+ tcommit
  quit
  ;
 xml ; GET /test/xml XML sample
@@ -135,11 +145,12 @@ readwritetest ; GET /test/readwrite Tests readwrite flag
  set httprsp=HTTPREADWRITE ; 0 or 1
  quit
  ;
-simtimeout ; GET /test/simtimeout Simulate Timeout (for now, needs to happen in the same curl process)
+simtimeout ; GET /test/simtimeout Simulate Timeout
+ ; This artifically expires the current token so that we can see that we time out when we re-use it
  new token set token=$piece(HTTPREQ("header","authorization"),"Bearer ",2,99)
- new oldut set oldut=$piece(TOKENCACHE(token),"^")
- new newut set newut=oldut-((15*60*1000*1000)-60)
- set $piece(TOKENCACHE(token),"^")=newut
+ new oldut set oldut=$piece(^|HTTPWEBGLD|tokens(token),"^")
+ new newut set newut=oldut-HTTPTTIMEOUT-60
+ set $piece(^|HTTPWEBGLD|tokens(token),"^")=newut
  set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  set httprsp=oldut_"^"_newut_$c(10,13)
  quit

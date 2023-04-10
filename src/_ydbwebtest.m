@@ -424,13 +424,18 @@ CORS ; @TEST Make sure CORS headers are returned
  quit
  ;
 login ; @TEST Test that logging in/tokens/logging out works
+ ; NB: Numbers as arguments to the M-Unit test asserts help us identify which test failed 
  new passwdJob,status,payload,httpStatus,return
  ;
  ; Now start a webserver with a username/password passed in $ydbgui_users
  view "setenv":"ydbgui_users":"admin:pass:RW"
  job start^%ydbwebreq:cmd="job --port 55730"
- hang .1
  set passwdJob=$zjob
+ ;
+ ; Need to make sure server is started before we ask curl to connect
+ open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+ else  D FAIL^%ut("Failed to connect to server") quit
+ close "sock"
  ;
  ; Negative test - No authentication: 403 - Forbidden
  ; Data not returned
@@ -482,49 +487,215 @@ login ; @TEST Test that logging in/tokens/logging out works
  do eq^%ut(httpStatus,403,9)
  ;
  ; Try simulated timeout call
- ; This call manipulates the TOKENCACHE to expire the current token so the first call works, but second call won't due to timeout
- ; To ensure that this code works, we do two calls in the same curl session (between .init and .cleanup)
- ; TODO: There seems to be a bug in the curl plugin causing it to crash on the second call.
- ;       So this test doesn't do what it's supposed to show; But a manual test shows that this works.
- ; 
+ ; This call manipulates ^tokens to expire the current token so the first call works, but second call won't due to timeout
+ ; There seems to be a bug in the curl plugin causing it to crash on the second call, so we tear-down curl and re-do the code again
  new httpStatus1,httpStatus2
  new return1,return2
  do &libcurl.init
  do &libcurl.addHeader("Authorization: Bearer "_token)
  set status1=$&libcurl.do(.httpStatus1,.return1,"GET","http://127.0.0.1:55730/test/simtimeout")
- ;set status2=$&libcurl.do(.httpStatus2,.return2,"GET","http://127.0.0.1:55730/test/simtimeout")
  do &libcurl.cleanup
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ set status2=$&libcurl.do(.httpStatus2,.return2,"GET","http://127.0.0.1:55730/test/simtimeout")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus1,200,10)
+ do eq^%ut(httpStatus2,403,11)
+ do tf^%ut(return1'["Token timeout",12)
+ do tf^%ut(return2["Token timeout",13)
  ;
  ; Logout with a valid token
  set payload="{ ""token"" : """_token_"""}"
  do &libcurl.init
  do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/logout",payload,"application/json")
  do &libcurl.cleanup
- do eq^%ut(httpStatus,200,10)
+ do eq^%ut(httpStatus,200,14)
  new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
- do eq^%ut(logoutoutput("status"),"OK",11)
+ do eq^%ut(logoutoutput("status"),"OK",15)
  ;
  ; Logout with invalid token - httpStatus is 200; but status is "token not found"
  set payload="{ ""token"" : """_token_"xx ""}"
  do &libcurl.init
  do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/logout",payload,"application/json")
  do &libcurl.cleanup
- do eq^%ut(httpStatus,200,12)
+ do eq^%ut(httpStatus,200,16)
  new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
- do eq^%ut(logoutoutput("status"),"token not found",13)
- ;
- ; Test timeout TODO
+ do eq^%ut(logoutoutput("status"),"token not found",17)
  ;
  ; now stop the webserver again
  open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
  use "p" r x:1
  close "p"
- d CHKEQ^%ut($ZCLOSE,0)
+ d eq^%ut($ZCLOSE,0)
  ;
- kill passwdJob
  view "unsetenv":"ydbgui_users":"admin:pass:RW"
  quit
  ;
+tTokenCleanup ; @Test Test Token Cleanup with timeout
+ ; NB: Numbers as arguments to the M-Unit test asserts help us identify which test failed 
+ new passwdJob,status,payload,httpStatus,return
+ ;
+ ; Now start a webserver with a username/password passed in $ydbgui_users
+ view "setenv":"ydbgui_users":"admin:pass:RW"
+ job start^%ydbwebreq:cmd="job --port 55730 --token-timeout 1"
+ set passwdJob=$zjob
+ ;
+ ; Need to make sure server is started before we ask curl to connect
+ open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+ if $test,'$device  ; nothing
+ else  D FAIL^%ut("Failed to connect to server") quit
+ close "sock"
+ ;
+ ; Now login with good un/pw
+ set payload="{ ""username"" : ""admin"", ""password"" : ""pass"" }"
+ do &libcurl.init
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,1)
+ ;
+ ; Get the token out of the json in `return`
+ ; We don't need to assert anything as the code will crash if returnjson is not properly formatted
+ new returnjson do decode^%ydbwebjson($name(return),$name(returnjson))
+ new token set token=returnjson("token")
+ ;
+ ; Now get the XML using the token
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/xml")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,2)
+ do tf^%ut(return["<?xml",3)
+ ;
+ ; Wait for 1 second
+ hang 1
+ ;
+ ; Get XML again, and this time we should be timed out
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/xml")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,403,4)
+ do tf^%ut(return["Forbidden",5)
+ ;
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
+ use "p" r x:1
+ close "p"
+ d eq^%ut($ZCLOSE,0)
+ ;
+ view "unsetenv":"ydbgui_users":"admin:pass:RW"
+ quit
+ ;
+tLoginNoTimeout ; @TEST Test Logins with no Timeouts
+ ; It's difficult to prove a negative, so all this test does is simple stuff with --token-timeout 0
+ ; NB: Numbers as arguments to the M-Unit test asserts help us identify which test failed 
+ ; 
+ new passwdJob,status,payload,httpStatus,return
+ ;
+ ; Now start a webserver with a username/password passed in $ydbgui_users
+ view "setenv":"ydbgui_users":"admin:pass:RW"
+ job start^%ydbwebreq:cmd="job --port 55730 --token-timeout 0"
+ set passwdJob=$zjob
+ ;
+ ; Need to make sure server is started before we ask curl to connect
+ open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+ if $test,'$device  ; nothing
+ else  D FAIL^%ut("Failed to connect to server") quit
+ close "sock"
+ ;
+ ; Now login with good un/pw
+ set payload="{ ""username"" : ""admin"", ""password"" : ""pass"" }"
+ do &libcurl.init
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,1)
+ ;
+ ; Get the token out of the json in `return`
+ ; We don't need to assert anything as the code will crash if returnjson is not properly formatted
+ new returnjson do decode^%ydbwebjson($name(return),$name(returnjson))
+ new token set token=returnjson("token")
+ ;
+ ; Now get the XML using the token
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/xml")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,2)
+ do tf^%ut(return["<?xml",3)
+
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
+ use "p" r x:1
+ close "p"
+ d eq^%ut($ZCLOSE,0)
+ ;
+ view "unsetenv":"ydbgui_users":"admin:pass:RW"
+ quit
+ ;
+tLoginMultipleServers ; @TEST Test login with multiple servers
+ ; --> to ensure they don't cross contaminate
+ new job1,job2,status,payload,httpStatus,return
+ ;
+ ; Now start a webserver with a username/password passed in $ydbgui_users
+ view "setenv":"ydbgui_users":"admin:pass:RW"
+ job start^%ydbwebreq:cmd="job --port 55730"
+ ;
+ ; Need to make sure server is started before we ask curl to connect
+ open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+ else  D FAIL^%ut("Failed to connect to server") quit
+ close "sock"
+ set job1=$zjob
+ ;
+ job start^%ydbwebreq:cmd="job --port 55731"
+ ;
+ ; Need to make sure server is started before we ask curl to connect
+ open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
+ else  D FAIL^%ut("Failed to connect to server") quit
+ close "sock"
+ set job2=$zjob
+ ;
+ ; login with good un/pw to job 1
+ set payload="{ ""username"" : ""admin"", ""password"" : ""pass"" }"
+ do &libcurl.init
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,1)
+ ;
+ ; Get token from job 1
+ new returnjson do decode^%ydbwebjson($name(return),$name(returnjson))
+ new token set token=returnjson("token")
+ ;
+ ; Use token from job 1 on job 1
+ ; Now get the XML using the token
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/xml")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,2)
+ do tf^%ut(return["<?xml",3)
+ ;
+ ; Use token from job 1 on job 2
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55731/test/xml")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,403,4)
+ ;
+ ; Stop servers
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_job1)::"pipe"
+ use "p" r x:1
+ close "p"
+ d eq^%ut($ZCLOSE,0)
+ open "p":(command="$gtm_dist/mupip stop "_job2)::"pipe"
+ use "p" r x:1
+ close "p"
+ d eq^%ut($ZCLOSE,0)
+ ;
+ view "unsetenv":"ydbgui_users":"admin:pass:RW"
+ quit
+
+ 
 tpost ; @TEST simple post
  n httpStatus,return
  n random set random=$random(99999999)
@@ -568,8 +739,10 @@ tTLS ; @TEST Start with TLS and test
  if ydbpasswd="" do fail^%ut("TLS is not set-up env 2") quit
  ;
  j start^%ydbwebreq:cmd="job --port 55730 --tlsconfig ydbgui"
- h .1
  new tlsjob s tlsjob=$zjob
+ open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+ else  D FAIL^%ut("Failed to connect to server") quit
+ close "sock"
  ;
  d &libcurl.init
  d &libcurl.serverCA("/mwebserver/certs/ydbgui.pem")
