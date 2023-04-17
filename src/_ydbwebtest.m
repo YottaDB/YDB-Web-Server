@@ -135,8 +135,7 @@ tgzip ; @TEST Test gzip encoding
  use "p" r x:1
  close "p"
  d CHKEQ^%ut($ZCLOSE,0)
- ;
- kill gzipflagjob
+ for  quit:'$zgetjpi(gzipflagjob,"ISPROCALIVE")  hang .001
  quit
  ;
 tnogzip ; @TEST Test the default nogzip
@@ -249,6 +248,7 @@ tLog1 ; @TEST Set HTTPLOG to 1
  use "p" r x:1
  d CHKEQ^%ut($ZCLOSE,0)
  close "p"
+ for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
  quit
  ;
 tLog2 ; @TEST Set HTTPLOG to 2
@@ -273,6 +273,7 @@ tLog2 ; @TEST Set HTTPLOG to 2
  use "p" r x:1
  d CHKEQ^%ut($ZCLOSE,0)
  close "p"
+ for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
  quit
  ;
 tLog3 ; @TEST Set HTTPLOG to 3
@@ -295,6 +296,7 @@ tLog3 ; @TEST Set HTTPLOG to 3
  use "p" r x:1
  d CHKEQ^%ut($ZCLOSE,0)
  close "p"
+ for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
  quit
  ;
 tDCLog ; @TEST Test Log Disconnect
@@ -315,6 +317,7 @@ tDCLog ; @TEST Test Log Disconnect
  use "p" r x:1
  d CHKEQ^%ut($ZCLOSE,0)
  close "p"
+ for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
  quit
  ;
 tOptionCombine ; @TEST Test combining options (#113)
@@ -348,6 +351,7 @@ tOptionCombine ; @TEST Test combining options (#113)
  use "p" r x:1
  d CHKEQ^%ut($ZCLOSE,0)
  close "p"
+ for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
  quit
  ;
 tWebPage ; @TEST Test Getting a web page
@@ -376,6 +380,7 @@ tWebPage ; @TEST Test Getting a web page
  use "p" r x:1
  d CHKEQ^%ut($ZCLOSE,0)
  close "p"
+ for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
  quit
  ;
 tHomePage ; @Test Getting index.html page
@@ -404,6 +409,7 @@ tHomePage ; @Test Getting index.html page
  use "p" r x:1
  d CHKEQ^%ut($ZCLOSE,0)
  close "p"
+ for  quit:'$zgetjpi(nogblJob,"ISPROCALIVE")  hang .001
  quit
  ;
 CORS ; @TEST Make sure CORS headers are returned
@@ -527,6 +533,7 @@ login ; @TEST Test that logging in/tokens/logging out works
  use "p" r x:1
  close "p"
  d eq^%ut($ZCLOSE,0)
+ for  quit:'$zgetjpi(passwdJob,"ISPROCALIVE")  hang .001
  ;
  view "unsetenv":"ydbgui_users":"admin:pass:RW"
  quit
@@ -542,7 +549,6 @@ tTokenCleanup ; @Test Test Token Cleanup with timeout
  ;
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
- if $test,'$device  ; nothing
  else  D FAIL^%ut("Failed to connect to server") quit
  close "sock"
  ;
@@ -582,6 +588,7 @@ tTokenCleanup ; @Test Test Token Cleanup with timeout
  use "p" r x:1
  close "p"
  d eq^%ut($ZCLOSE,0)
+ for  quit:'$zgetjpi(passwdJob,"ISPROCALIVE")  hang .001
  ;
  view "unsetenv":"ydbgui_users":"admin:pass:RW"
  quit
@@ -599,7 +606,6 @@ tLoginNoTimeout ; @TEST Test Logins with no Timeouts
  ;
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
- if $test,'$device  ; nothing
  else  D FAIL^%ut("Failed to connect to server") quit
  close "sock"
  ;
@@ -628,6 +634,7 @@ tLoginNoTimeout ; @TEST Test Logins with no Timeouts
  use "p" r x:1
  close "p"
  d eq^%ut($ZCLOSE,0)
+ for  quit:'$zgetjpi(passwdJob,"ISPROCALIVE")  hang .001
  ;
  view "unsetenv":"ydbgui_users":"admin:pass:RW"
  quit
@@ -687,10 +694,13 @@ tLoginMultipleServers ; @TEST Test login with multiple servers
  use "p" r x:1
  close "p"
  d eq^%ut($ZCLOSE,0)
+ for  quit:'$zgetjpi(job1,"ISPROCALIVE")  hang .001
+ ;
  open "p":(command="$gtm_dist/mupip stop "_job2)::"pipe"
  use "p" r x:1
  close "p"
  d eq^%ut($ZCLOSE,0)
+ for  quit:'$zgetjpi(job2,"ISPROCALIVE")  hang .001
  ;
  view "unsetenv":"ydbgui_users":"admin:pass:RW"
  quit
