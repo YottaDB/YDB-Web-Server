@@ -4,7 +4,6 @@
  ; the URLMAP entry point.
  ;
 URLMAP ;
- ;;GET ping ping^%ydbwebapi
  ;;GET test/r/{routine?.1"%25".32AN} R^%ydbwebapi
  ;;PUT test/r/{routine?.1"%25".32AN} PR^%ydbwebapi
  ;;GET /test/error err^%ydbwebapi

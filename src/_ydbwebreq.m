@@ -389,7 +389,7 @@ portIsOpen(port,tls,tlsconfig) ; [$$ Private] Check if port is open, if so, retu
  .. if d write "TLS error, exiting...",! close "porttest" set error=1 quit
  .. use "porttest"
  . quit:error
- . write "GET /ping HTTP/1.1"_$char(13,10)
+ . write "GET /api/ping HTTP/1.1"_$char(13,10)
  . write "Host: localhost:"_options("port")_$char(13,10)
  . write "User-Agent: "_$zposition_$char(13,10)
  . write "Accept: */*"_$char(13,10)_$char(13,10)

@@ -167,7 +167,7 @@ temptygzip ; @TEST Empty response with gzip
  ;
 tping ; @TEST Ping
  n httpStatus,return
- n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/ping")
+ n status s status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/api/ping")
  do CHKEQ^%ut(httpStatus,200)
  do CHKTF^%ut(return["server")
  quit
@@ -237,7 +237,7 @@ tLog1 ; @TEST Set HTTPLOG to 1
  else  D FAIL^%ut("Failed to connect to server") quit
  close "sock"
  n httpStatus,return,x
- d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/ping")
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/api/ping")
  open "/tmp/sim-stdout1":(stream:readonly:rewind:delimiter=$char(10))
  use "/tmp/sim-stdout1"
  new i for i=1:1 read x(i) quit:$zeof
@@ -259,7 +259,7 @@ tLog2 ; @TEST Set HTTPLOG to 2
  else  D FAIL^%ut("Failed to connect to server") quit
  close "sock"
  n httpStatus,return,x
- d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/ping")
+ d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/api/ping")
  open "/tmp/sim-stdout2":(stream:readonly:rewind:delimiter=$char(10))
  use "/tmp/sim-stdout2"
  new i for i=1:1 read x(i) quit:$zeof
@@ -453,14 +453,14 @@ login ; @TEST Test that logging in/tokens/logging out works
  ; Expect 401 Unauthorized
  set payload="{ ""username"" : ""admin"", ""password"" : ""foo"" }"
  do &libcurl.init
- do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/api/login",payload,"application/json")
  do &libcurl.cleanup
  do eq^%ut(httpStatus,401,3)
  ;
  ; Now login with good un/pw
  set payload="{ ""username"" : ""admin"", ""password"" : ""pass"" }"
  do &libcurl.init
- do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/api/login",payload,"application/json")
  do &libcurl.cleanup
  do eq^%ut(httpStatus,200,4)
  ;
@@ -513,7 +513,7 @@ login ; @TEST Test that logging in/tokens/logging out works
  ; Logout with a valid token
  set payload="{ ""token"" : """_token_"""}"
  do &libcurl.init
- do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/logout",payload,"application/json")
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/api/logout",payload,"application/json")
  do &libcurl.cleanup
  do eq^%ut(httpStatus,200,14)
  new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
@@ -522,7 +522,7 @@ login ; @TEST Test that logging in/tokens/logging out works
  ; Logout with invalid token - httpStatus is 200; but status is "token not found"
  set payload="{ ""token"" : """_token_"xx ""}"
  do &libcurl.init
- do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/logout",payload,"application/json")
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/api/logout",payload,"application/json")
  do &libcurl.cleanup
  do eq^%ut(httpStatus,200,16)
  new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
@@ -555,7 +555,7 @@ tTokenCleanup ; @Test Test Token Cleanup with timeout
  ; Now login with good un/pw
  set payload="{ ""username"" : ""admin"", ""password"" : ""pass"" }"
  do &libcurl.init
- do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/api/login",payload,"application/json")
  do &libcurl.cleanup
  do eq^%ut(httpStatus,200,1)
  ;
@@ -612,7 +612,7 @@ tLoginNoTimeout ; @TEST Test Logins with no Timeouts
  ; Now login with good un/pw
  set payload="{ ""username"" : ""admin"", ""password"" : ""pass"" }"
  do &libcurl.init
- do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/api/login",payload,"application/json")
  do &libcurl.cleanup
  do eq^%ut(httpStatus,200,1)
  ;
@@ -664,7 +664,7 @@ tLoginMultipleServers ; @TEST Test login with multiple servers
  ; login with good un/pw to job 1
  set payload="{ ""username"" : ""admin"", ""password"" : ""pass"" }"
  do &libcurl.init
- do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/login",payload,"application/json")
+ do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/api/login",payload,"application/json")
  do &libcurl.cleanup
  do eq^%ut(httpStatus,200,1)
  ;
@@ -704,8 +704,41 @@ tLoginMultipleServers ; @TEST Test login with multiple servers
  ;
  view "unsetenv":"ydbgui_users":"admin:pass:RW"
  quit
-
- 
+ ;
+tauthMode ; @TEST /api/auth-mode
+ new httpStatus,return,json,status,passwdJob
+ set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/api/auth-mode")
+ do eq^%ut(httpStatus,200)
+ do decode^%ydbwebjson($name(return),$name(json))
+ do eq^%ut(json("auth"),"false")
+ ;
+ kill json
+ ;
+ ; Now start a webserver with a username/password passed in $ydbgui_users
+ view "setenv":"ydbgui_users":"admin:pass:RW"
+ job start^%ydbwebreq:cmd="job --port 55730"
+ set passwdJob=$zjob
+ ;
+ ; Need to make sure server is started before we ask curl to connect
+ open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+ else  D FAIL^%ut("Failed to connect to server") quit
+ close "sock"
+ ;
+ set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/api/auth-mode")
+ do eq^%ut(httpStatus,200)
+ do decode^%ydbwebjson($name(return),$name(json))
+ do eq^%ut(json("auth"),"true")
+ ;
+ ; now stop the webserver again
+ open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
+ use "p" r x:1
+ close "p"
+ d eq^%ut($ZCLOSE,0)
+ for  quit:'$zgetjpi(passwdJob,"ISPROCALIVE")  hang .001
+ ;
+ view "unsetenv":"ydbgui_users":"admin:pass:RW"
+ quit
+ ;
 tpost ; @TEST simple post
  n httpStatus,return
  n random set random=$random(99999999)
@@ -758,7 +791,7 @@ tTLS ; @TEST Start with TLS and test
  d &libcurl.serverCA("/mwebserver/certs/ydbgui.pem")
  ; MUST use localhost here as certificate has a domain name of localhost
  ; Took me a while to find that one out
- d &libcurl.do(.httpStatus,.return,"GET","https://localhost:55730/ping")
+ d &libcurl.do(.httpStatus,.return,"GET","https://localhost:55730/api/ping")
  d &libcurl.cleanup
  d CHKEQ^%ut(httpStatus,200)
  ;
@@ -818,7 +851,7 @@ tVersion ; @TEST version
  new httpStatus,return
  ;
  ; Default status is zero
- new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/version")
+ new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/api/version")
  do eq^%ut(httpStatus,200)
  do decode^%ydbwebjson($name(return),$name(version))
  do tf^%ut($data(version("version")))

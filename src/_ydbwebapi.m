@@ -66,18 +66,18 @@ utf8post ; POST /test/utf8/post
  set httploc="test/utf8/post?foo="_httpargs("foo")
  quit
  ;
-ping ; GET /ping writes out a ping response
+ping ; GET /api/ping writes out a ping response
  set httprsp("self")=$job
  set httprsp("self","\s")=""
  set httprsp("server")=PPID
  set httprsp("server","\s")=""
  quit
  ;
-version ; GET /version returns version information
+version ; GET /api/version returns version information
  set httprsp("version")=$$version^%ydbwebversion
  quit
  ;
-login ; POST /login { "username": "xxx", "password": "pass" }
+login ; POST /api/login { "username": "xxx", "password": "pass" }
  new username set username=$get(httpreq("json","username"))
  new password set password=$get(httpreq("json","password"))
  if (username="")!(password="") do setError^%ydbwebutils(401,"Unauthorized") QUIT
@@ -93,7 +93,7 @@ login ; POST /login { "username": "xxx", "password": "pass" }
  tcommit
  quit
  ;
-logout ; POST /logout { "token" : "xxx" }
+logout ; POST /api/logout { "token" : "xxx" }
  new token set token=$get(httpreq("json","token"))
  tstart ():transactionid="batch"
    if $$checkIfTokenExists^%ydbwebusers(token) do
@@ -101,6 +101,10 @@ logout ; POST /logout { "token" : "xxx" }
    . set httprsp("status")="OK"
    else  set httprsp("status")="token not found"
  tcommit
+ quit
+ ;
+authmode ; GET /api/auth-mode
+ set httprsp("auth")=$select(HTTPHASUSERS:"true",1:"false")
  quit
  ;
 xml ; GET /test/xml XML sample

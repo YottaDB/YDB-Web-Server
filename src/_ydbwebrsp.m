@@ -139,10 +139,11 @@ MATCHR(ROUTINE,ARGS,AUTHNEEDED) ; Match against _ydbweburl.m
  ;
  ; Special processing for ping, version, login, logout. They should be always available.
  S AUTHNEEDED=0
- I METHOD="GET",PATH="ping"    S ROUTINE="ping^%ydbwebapi" QUIT
- I METHOD="GET",PATH="version" S ROUTINE="version^%ydbwebapi" QUIT
- I METHOD="POST",PATH="login"  S ROUTINE="login^%ydbwebapi" QUIT
- I METHOD="POST",PATH="logout" S ROUTINE="logout^%ydbwebapi" QUIT
+ I METHOD="GET",PATH="api/ping"      S ROUTINE="ping^%ydbwebapi" QUIT
+ I METHOD="GET",PATH="api/version"   S ROUTINE="version^%ydbwebapi" QUIT
+ I METHOD="POST",PATH="api/login"    S ROUTINE="login^%ydbwebapi" QUIT
+ I METHOD="POST",PATH="api/logout"   S ROUTINE="logout^%ydbwebapi" QUIT
+ I METHOD="GET",PATH="api/auth-mode" S ROUTINE="authmode^%ydbwebapi" QUIT
  ;
  I $T(^%ydbweburl)="" S ROUTINE="" QUIT
  ;
