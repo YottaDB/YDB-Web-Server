@@ -62,7 +62,7 @@ stdin ; Supply Usernames/Password/Authorization on stdin
  . new username,password,authorization
  . read !,"Username: ",username  if (username="")!(username="^") set done=1 quit
  . for  read !,"Password: ",password  quit:password'=""  write ?35,"Must enter a value"
- . for  read !,"Authorization (RO, RW): ",authorization  quit:"^RO^RW^"[("^"_authorization_"^")  write ?35,"RO/RW"
+ . for  read !,"Authorization: ",authorization  quit:authorization'=""  write ?35,"Must enter a value"
  . write !
  . do setusers(username,password,STARTUPZUT)
  quit
@@ -74,7 +74,7 @@ env ; Supply Usernames/Passwords/Authorization in env variable
  . new username   set username=$piece(datum,":",1)
  . new password   set password=$piece(datum,":",2)
  . new authorization set authorization=$piece(datum,":",3)
- . if "^RO^RW^"'[("^"_authorization_"^") quit
+ . if (username="")!(password="")!(authorization="") quit
  . do setusers(username,password,STARTUPZUT)
  quit
  ;

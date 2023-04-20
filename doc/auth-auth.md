@@ -41,7 +41,7 @@ Enter enter without entering a username to quit from the loop.
 
 Username: *sam*
 Password: *foo*
-Authorization (RO, RW): *RW*
+Authorization: *RW*
 
 Username: *<enter>*
 Starting Server at port 9080 in directory /home/sam/work/gitlab/MWS/build/ at logging level 0 using authentication
@@ -59,10 +59,11 @@ Once you have authentication enabled, all REST endpoints defined in your
 `_ydbweburl` file will be protected. However, these endpoints are always
 available from the server:
 
-- `/ping`
-- `/version`
-- `/login`
-- `/logout`
+- `/api/ping`
+- `/api/version`
+- `/api/login`
+- `/api/logout`
+- `/api/auth-mode`
 
 If you try to call any other end point without authentication or with a bad
 token, you will get the following:
@@ -86,39 +87,42 @@ curl -Ss localhost:9080/test/json | jq
 }
 ```
 
-To login, POST a JSON of { "username": "xxx", "password": "xxx" } to /login.
-You will be sent back a token in the body as { "token": "xxx" }. You will get
-401 Unauthorized if username/password is not specified correctly.
+To login, POST a JSON of { "username": "xxx", "password": "xxx" } to /api/login.
+You will be sent back a token in the body as { "token": "xxx", "authorization":
+"RO" }. You will get 401 Unauthorized if username/password is not specified
+correctly.
 
 For example:
 
 ```
 curl -H 'Content-Type: application/json' -d '{ "username": "sam", "password": "foo" }' localhost:9080/login
-{"token":"kkrL6En6vc0CO6GEZxarBE"}
+{"authorization":"RW","token":"F3joHQj0kyt1Df8ZglOp40"}
 ```
+
+If you need to know whether you need to log-in, `/api/auth-mode` will return
+`{ "auth": true/false }` depending on whether you need to log-in or not.
 
 To authenticate each request, send the token in the `Authorization: Bearer`
 header. If you don't send it, or send a bad token, you will get
 an error of 403 Forbidden.
 
 ```
-curl -H 'Authorization: Bearer kkrL6En6vc0CO6GEZxarBE' -v localhost:9080/test/json
+curl -H 'Authorization: Bearer F3joHQj0kyt1Df8ZglOp40' -v localhost:9080/test/json
 {"foo":["boo","doo","loo"]}
 ```
 
 Once you are done with your session, you can invalidate the token by logging
-out. To logout, send the token back in the same format that you got it from
-`/login` to `/logout`.
+out. To logout, send the token back in the `Authorization` header using a GET call.
 
 ```
-$ curl -H 'Content-Type: application/json' -d '{"token":"kkrL6En6vc0CO6GEZxarBE"}' localhost:9080/logout
+$ curl -H 'Authorization: Bearer F3joHQj0kyt1Df8ZglOp40' localhost:9080/api/logout
 {"status":"OK"}
 ```
 
 Logging out again is allowed (you will get an HTTP 200 back), but the `status` will say `token not found`.
 
 If a token is timed out (by default, it will be timed out in 15 minutes from
-its last use), you will get an HTTP 403 back, with a message of "Token
+its last use), you will get an HTTP 408 back, with a message of "Token
 timeout". Timeouts are rare, as usually tokens are cleaned up before they are
 detected to exist and to be considered timed out. So don't worry if you don't
 see this message. The more expected response is a 403 with a message of
@@ -128,7 +132,8 @@ See below for more details.
 # Authorization
 Currently, nothing is done with the authorization of RO/RW except to populate
 the `HTTPREADWRITE` variable. It's the responsibility of the end application to
-check this variable for how it wants to use it.
+check this variable for how it wants to use it. If you use other authorizations
+besides "RW", `HTTPREADWRITE` will remain zero.
 
 # Miscelleanous considerations
 ## Using `--token-timeout {n}`

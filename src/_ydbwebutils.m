@@ -80,6 +80,7 @@ setError1 ;
  I ERRCODE=403 S ERRNAME="Forbidden"
  I ERRCODE=404 S ERRNAME="Not Found"
  I ERRCODE=405 S ERRNAME="Method Not Allowed"
+ I ERRCODE=408 S ERRNAME="Token Timeout"
  ; system errors (500-599)
  I ERRCODE=501 S ERRNAME="M execution error"
  I ERRCODE=502 S ERRNAME="Unable to lock record"
@@ -195,7 +196,7 @@ INIT64() Q "=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
  ;
  ; Portions of this code are public domain, but it was extensively modified
  ; Copyright (c) 2013-2019 Sam Habiel
- ; Copyright (c) 2022 YottaDB LLC
+ ; Copyright (c) 2022-2023 YottaDB LLC
  ;
  ;Licensed under the Apache License, Version 2.0 (the "License");
  ;you may not use this file except in compliance with the License.

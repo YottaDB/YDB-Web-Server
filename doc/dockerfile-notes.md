@@ -27,18 +27,28 @@ Several ways to use this:
 ```
 # Run Server on port 9080
 docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws server
+
 # Run Server on port 9080 with level 2 verbosity
 docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws server 2
+
+# Run Server with users
+docker run -e ydbgui_users="sam:foo:RW" -p 9080:9080 -t -v $PWD/src:/mwebserver/r --rm mws server
+
 # Run Tests
 docker run -v $PWD/src:/mwebserver/r --rm mws tests
+
 # Run Bash
 docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws bash
+
 # Run debugger (starts server on 9080, and you need to zstep into)
 docker run --rm -it -p 9080:9080 mws debug
+
 # Run Server TLS on port 9080:
 docker run -p 9080:9080 -v $PWD/src:/mwebserver/r --rm -it mws server-tls
+
 # Run Debug TLS on port 9080:
 docker run -p 9080:9080 -v $PWD/src:/mwebserver/r --rm -it mws debug-tls
+
 # Run YDBGUI
 docker run -p 9080:9080 -v $PWD/src:/mwebserver/r --rm -it mws ydbgui
 ```

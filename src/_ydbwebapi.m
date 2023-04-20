@@ -86,17 +86,20 @@ login ; POST /api/login { "username": "xxx", "password": "pass" }
  ;
  tstart ():transactionid="batch"
    if $$checkIfUserExists^%ydbwebusers(hash) do
-   . new authorization set authorization=$$getAuthorizationFromUser^%ydbwebusers(hash)
-   . set httprsp("token")=$$generateToken^%ydbwebusers(hash)
-   . do storeToken^%ydbwebusers(httprsp("token"),authorization)
+   . new authorization,token
+   . set token=$$generateToken^%ydbwebusers(hash)
+   . set authorization=$$getAuthorizationFromUser^%ydbwebusers(hash)
+   . do storeToken^%ydbwebusers(token,authorization)
+   . set httprsp("token")=token
+   . set httprsp("authorization")=authorization
    else  do setError^%ydbwebutils(401,"Unauthorized")  ; Invalid
  tcommit
  quit
  ;
-logout ; POST /api/logout { "token" : "xxx" }
- new token set token=$get(httpreq("json","token"))
+logout ; POST /api/logout (with token in the header)
+ new token set token=$piece($get(httpreq("header","authorization")),"Bearer ",2,99)
  tstart ():transactionid="batch"
-   if $$checkIfTokenExists^%ydbwebusers(token) do
+   if token'="",$$checkIfTokenExists^%ydbwebusers(token) do
    . do deleteToken^%ydbwebusers(token)
    . set httprsp("status")="OK"
    else  set httprsp("status")="token not found"

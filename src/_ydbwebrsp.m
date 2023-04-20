@@ -107,6 +107,10 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  . ; See if we have a token
  . if $get(HTTPREQ("header","authorization"))'="" do
  .. new token set token=$piece(HTTPREQ("header","authorization"),"Bearer ",2,99)
+ .. ;
+ .. ; If token is empty, don't continue
+ .. if token="" quit
+ .. ;
  .. ; If the token exists in our cache
  .. tstart ():transactionid="batch"
  ..   if $$checkIfTokenExists^%ydbwebusers(token) do
@@ -127,7 +131,7 @@ MATCH(ROUTINE,ARGS) ; evaluate paths in sequence until match found (else 404)
  ...   ;
  .. tcommit
  . if 'authenticated do setError^%ydbwebutils(403,"Forbidden")     QUIT
- . if timedout       do setError^%ydbwebutils(403,"Token timeout") QUIT
+ . if timedout       do setError^%ydbwebutils(408,"Token timeout") QUIT
  QUIT
  ;
  ;
@@ -142,7 +146,7 @@ MATCHR(ROUTINE,ARGS,AUTHNEEDED) ; Match against _ydbweburl.m
  I METHOD="GET",PATH="api/ping"      S ROUTINE="ping^%ydbwebapi" QUIT
  I METHOD="GET",PATH="api/version"   S ROUTINE="version^%ydbwebapi" QUIT
  I METHOD="POST",PATH="api/login"    S ROUTINE="login^%ydbwebapi" QUIT
- I METHOD="POST",PATH="api/logout"   S ROUTINE="logout^%ydbwebapi" QUIT
+ I METHOD="GET",PATH="api/logout"   S ROUTINE="logout^%ydbwebapi" QUIT
  I METHOD="GET",PATH="api/auth-mode" S ROUTINE="authmode^%ydbwebapi" QUIT
  ;
  I $T(^%ydbweburl)="" S ROUTINE="" QUIT
@@ -329,6 +333,7 @@ RSPLINE() ; writes out a response line based on HTTPERR
  I $G(HTTPERR)=403 Q "HTTP/1.1 403 Forbidden"
  I $G(HTTPERR)=404 Q "HTTP/1.1 404 Not Found"
  I $G(HTTPERR)=405 Q "HTTP/1.1 405 Method Not Allowed"
+ I $G(HTTPERR)=408 Q "HTTP/1.1 408 Request Timeout"
  Q "HTTP/1.1 500 Internal Server Error"
  ;
  ; Portions of this code are public domain, but it was extensively modified

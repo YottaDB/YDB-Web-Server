@@ -16,6 +16,17 @@ SHUTDOWN ;
  kill myJob
  quit
  ;
+ ; -------------------
+ ; Helper methods to stop the server at specifc ports in the tests
+ ;
+stop(pid)
+ open "p":(command="$gtm_dist/mupip stop "_pid)::"pipe"
+ use "p" r x:1
+ close "p"
+ d eq^%ut($ZCLOSE,0)
+ for  quit:'$zgetjpi(pid,"isprocalive")  hang .001
+ quit
+ ;
 tstartagain ; @TEST Start again on the same port
  job start^%ydbwebreq:cmd="job --port 55728"
  set myJob=$zjob
@@ -131,11 +142,7 @@ tgzip ; @TEST Test gzip encoding
  view "badchar"
 
  ; now stop the webserver again
- open "p":(command="$gtm_dist/mupip stop "_gzipflagjob)::"pipe"
- use "p" r x:1
- close "p"
- d CHKEQ^%ut($ZCLOSE,0)
- for  quit:'$zgetjpi(gzipflagjob,"ISPROCALIVE")  hang .001
+ do stop(gzipflagjob)
  quit
  ;
 tnogzip ; @TEST Test the default nogzip
@@ -244,11 +251,7 @@ tLog1 ; @TEST Set HTTPLOG to 1
  close "/tmp/sim-stdout1"
  ; Can't get the file to have the right contents; but it's there when manually testing...
  ;d CHKTF^%ut(x(1)["ping",x(1))
- open "p":(command="$gtm_dist/mupip stop "_serverjob)::"pipe"
- use "p" r x:1
- d CHKEQ^%ut($ZCLOSE,0)
- close "p"
- for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
+ do stop(serverjob)
  quit
  ;
 tLog2 ; @TEST Set HTTPLOG to 2
@@ -269,11 +272,7 @@ tLog2 ; @TEST Set HTTPLOG to 2
  ;d CHKTF^%ut(x(1)["ping",x(1))
  ; Funny enough, even cat does not show the correct contents, so something is
  ; not right, but I can't manually replicate this
- open "p":(command="$gtm_dist/mupip stop "_serverjob)::"pipe"
- use "p" r x:1
- d CHKEQ^%ut($ZCLOSE,0)
- close "p"
- for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
+ do stop(serverjob)
  quit
  ;
 tLog3 ; @TEST Set HTTPLOG to 3
@@ -292,11 +291,7 @@ tLog3 ; @TEST Set HTTPLOG to 3
  new i for i=1:1 read x(i) quit:$zeof
  close "/tmp/sim-stdout3"
  d CHKTF^%ut(x(8)["HTTPRSP",x(1))
- open "p":(command="$gtm_dist/mupip stop "_serverjob)::"pipe"
- use "p" r x:1
- d CHKEQ^%ut($ZCLOSE,0)
- close "p"
- for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
+ do stop(serverjob)
  quit
  ;
 tDCLog ; @TEST Test Log Disconnect
@@ -313,11 +308,7 @@ tDCLog ; @TEST Test Log Disconnect
  ; Ditto on not finding the text
  ;zwrite x
  ;d CHKTF^%ut(x(1)["Disconnect/Halt",x(1))
- open "p":(command="$gtm_dist/mupip stop "_serverjob)::"pipe"
- use "p" r x:1
- d CHKEQ^%ut($ZCLOSE,0)
- close "p"
- for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
+ do stop(serverjob)
  quit
  ;
 tOptionCombine ; @TEST Test combining options (#113)
@@ -347,11 +338,7 @@ tOptionCombine ; @TEST Test combining options (#113)
  do tf^%ut(return[$C(0))
  view "badchar"
  ;
- open "p":(command="$gtm_dist/mupip stop "_serverjob)::"pipe"
- use "p" r x:1
- d CHKEQ^%ut($ZCLOSE,0)
- close "p"
- for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
+ do stop(serverjob)
  quit
  ;
 tWebPage ; @TEST Test Getting a web page
@@ -376,20 +363,16 @@ tWebPage ; @TEST Test Getting a web page
  d CHKEQ^%ut(httpStatus,200)
  d CHKTF^%ut(return[random)
  ; now stop the webserver again
- open "p":(command="$gtm_dist/mupip stop "_serverjob)::"pipe"
- use "p" r x:1
- d CHKEQ^%ut($ZCLOSE,0)
- close "p"
- for  quit:'$zgetjpi(serverjob,"ISPROCALIVE")  hang .001
+ do stop(serverjob)
  quit
  ;
 tHomePage ; @Test Getting index.html page
- n nogblJob
+ n serverjob
  ;
  ; Now start a webserver with a new directory of /tmp/
  job start^%ydbwebreq:cmd="job --port 55731 --directory /tmp/"
  hang .1
- set nogblJob=$zjob
+ set serverjob=$zjob
  new random s random=$R(9817234)
  open "/tmp/index.html":(newversion)
  use "/tmp/index.html"
@@ -405,11 +388,7 @@ tHomePage ; @Test Getting index.html page
  d &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55731/")
  d CHKEQ^%ut(httpStatus,200)
  d CHKTF^%ut(return[random)
- open "p":(command="$gtm_dist/mupip stop "_nogblJob)::"pipe"
- use "p" r x:1
- d CHKEQ^%ut($ZCLOSE,0)
- close "p"
- for  quit:'$zgetjpi(nogblJob,"ISPROCALIVE")  hang .001
+ do stop(serverjob)
  quit
  ;
 CORS ; @TEST Make sure CORS headers are returned
@@ -468,6 +447,11 @@ login ; @TEST Test that logging in/tokens/logging out works
  ; We don't need to assert anything as the code will crash if returnjson is not properly formatted
  new returnjson do decode^%ydbwebjson($name(return),$name(returnjson))
  new token set token=returnjson("token")
+ new authorization set authorization=returnjson("authorization")
+ ;
+ ; Confirm the validity of the token and authorization
+ do tf^%ut(token'="")
+ do eq^%ut(authorization,"RW")
  ;
  ; Now get the XML using the token
  do &libcurl.init
@@ -492,6 +476,13 @@ login ; @TEST Test that logging in/tokens/logging out works
  do &libcurl.cleanup
  do eq^%ut(httpStatus,403,9)
  ;
+ ; Try with empty token (previously crashed the child process)
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer ")
+ set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/xml")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,403)
+ ;
  ; Try simulated timeout call
  ; This call manipulates ^tokens to expire the current token so the first call works, but second call won't due to timeout
  ; There seems to be a bug in the curl plugin causing it to crash on the second call, so we tear-down curl and re-do the code again
@@ -506,36 +497,49 @@ login ; @TEST Test that logging in/tokens/logging out works
  set status2=$&libcurl.do(.httpStatus2,.return2,"GET","http://127.0.0.1:55730/test/simtimeout")
  do &libcurl.cleanup
  do eq^%ut(httpStatus1,200,10)
- do eq^%ut(httpStatus2,403,11)
+ do eq^%ut(httpStatus2,408,11)
  do tf^%ut(return1'["Token timeout",12)
  do tf^%ut(return2["Token timeout",13)
  ;
  ; Logout with a valid token
- set payload="{ ""token"" : """_token_"""}"
  do &libcurl.init
- do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/api/logout",payload,"application/json")
+ do &libcurl.addHeader("Authorization: Bearer "_token)
+ do &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/api/logout")
  do &libcurl.cleanup
  do eq^%ut(httpStatus,200,14)
  new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
  do eq^%ut(logoutoutput("status"),"OK",15)
  ;
  ; Logout with invalid token - httpStatus is 200; but status is "token not found"
- set payload="{ ""token"" : """_token_"xx ""}"
  do &libcurl.init
- do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55730/api/logout",payload,"application/json")
+ do &libcurl.addHeader("Authorization: Bearer "_token_"xx ")
+ do &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/api/logout")
  do &libcurl.cleanup
  do eq^%ut(httpStatus,200,16)
  new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
  do eq^%ut(logoutoutput("status"),"token not found",17)
  ;
- ; now stop the webserver again
- open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
- use "p" r x:1
- close "p"
- d eq^%ut($ZCLOSE,0)
- for  quit:'$zgetjpi(passwdJob,"ISPROCALIVE")  hang .001
+ ; Logout with empty token - httpStatus is 200; but status is "token not found"
+ do &libcurl.init
+ do &libcurl.addHeader("Authorization: Bearer ")
+ do &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/api/logout")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,18)
+ new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
+ do eq^%ut(logoutoutput("status"),"token not found",19)
  ;
- view "unsetenv":"ydbgui_users":"admin:pass:RW"
+ ; Logout without an authorization header
+ do &libcurl.init
+ do &libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/api/logout")
+ do &libcurl.cleanup
+ do eq^%ut(httpStatus,200,20)
+ new logoutoutput do decode^%ydbwebjson("return","logoutoutput")
+ do eq^%ut(logoutoutput("status"),"token not found",21)
+ ;
+ ; now stop the webserver again
+ do stop(passwdJob)
+ ;
+ view "unsetenv":"ydbgui_users"
  quit
  ;
 tTokenCleanup ; @Test Test Token Cleanup with timeout
@@ -584,13 +588,9 @@ tTokenCleanup ; @Test Test Token Cleanup with timeout
  do tf^%ut(return["Forbidden",5)
  ;
  ; now stop the webserver again
- open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
- use "p" r x:1
- close "p"
- d eq^%ut($ZCLOSE,0)
- for  quit:'$zgetjpi(passwdJob,"ISPROCALIVE")  hang .001
+ do stop(passwdJob)
  ;
- view "unsetenv":"ydbgui_users":"admin:pass:RW"
+ view "unsetenv":"ydbgui_users"
  quit
  ;
 tLoginNoTimeout ; @TEST Test Logins with no Timeouts
@@ -630,13 +630,9 @@ tLoginNoTimeout ; @TEST Test Logins with no Timeouts
  do tf^%ut(return["<?xml",3)
 
  ; now stop the webserver again
- open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
- use "p" r x:1
- close "p"
- d eq^%ut($ZCLOSE,0)
- for  quit:'$zgetjpi(passwdJob,"ISPROCALIVE")  hang .001
+ do stop(passwdJob)
  ;
- view "unsetenv":"ydbgui_users":"admin:pass:RW"
+ view "unsetenv":"ydbgui_users"
  quit
  ;
 tLoginMultipleServers ; @TEST Test login with multiple servers
@@ -689,20 +685,10 @@ tLoginMultipleServers ; @TEST Test login with multiple servers
  do eq^%ut(httpStatus,403,4)
  ;
  ; Stop servers
- ; now stop the webserver again
- open "p":(command="$gtm_dist/mupip stop "_job1)::"pipe"
- use "p" r x:1
- close "p"
- d eq^%ut($ZCLOSE,0)
- for  quit:'$zgetjpi(job1,"ISPROCALIVE")  hang .001
+ do stop(job1)
+ do stop(job2)
  ;
- open "p":(command="$gtm_dist/mupip stop "_job2)::"pipe"
- use "p" r x:1
- close "p"
- d eq^%ut($ZCLOSE,0)
- for  quit:'$zgetjpi(job2,"ISPROCALIVE")  hang .001
- ;
- view "unsetenv":"ydbgui_users":"admin:pass:RW"
+ view "unsetenv":"ydbgui_users"
  quit
  ;
 tauthMode ; @TEST /api/auth-mode
@@ -730,13 +716,8 @@ tauthMode ; @TEST /api/auth-mode
  do eq^%ut(json("auth"),"true")
  ;
  ; now stop the webserver again
- open "p":(command="$gtm_dist/mupip stop "_passwdJob)::"pipe"
- use "p" r x:1
- close "p"
- d eq^%ut($ZCLOSE,0)
- for  quit:'$zgetjpi(passwdJob,"ISPROCALIVE")  hang .001
- ;
- view "unsetenv":"ydbgui_users":"admin:pass:RW"
+ do stop(passwdJob)
+ view "unsetenv":"ydbgui_users"
  quit
  ;
 tpost ; @TEST simple post
@@ -840,11 +821,7 @@ tReadWrite ; @TEST Test read-write flag
  do eq^%ut(return,1)
  ;
  ; now stop the webserver with read/write
- new x
- open "p":(command="$gtm_dist/mupip stop "_rwserver)::"pipe"
- use "p" r x:1
- close "p"
- do CHKEQ^%ut($ZCLOSE,0)
+ do stop(rwserver)
  quit
  ;
 tVersion ; @TEST version
@@ -860,7 +837,7 @@ tVersion ; @TEST version
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
  new options set options("port")=55728
  do stop^%ydbwebreq(.options)
- hang .1
+ for  quit:'$zgetjpi(myJob,"isprocalive")  hang .001
  do eq^%ut($zgetjpi(myJob,"ISPROCALIVE"),0)
  quit
  ;
