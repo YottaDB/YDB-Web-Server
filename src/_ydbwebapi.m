@@ -92,6 +92,7 @@ login ; POST /api/login { "username": "xxx", "password": "pass" }
    . do storeToken^%ydbwebusers(token,authorization)
    . set httprsp("token")=token
    . set httprsp("authorization")=authorization
+   . set httprsp("timeout")=(HTTPTTIMEOUT/1000/1000)
    else  do setError^%ydbwebutils(401,"Unauthorized")  ; Invalid
  tcommit
  quit

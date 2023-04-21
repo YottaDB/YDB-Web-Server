@@ -148,7 +148,7 @@ tokenCleanup
  if HTTPTTIMEOUT=0 quit  ; no timeout
  ; cutoffZUT is in the past (that's why it's a minus from now, not a plus)
  new currentZUT set currentZUT=$ZUT
- new cutoffZUT  set cutoffZUT=currentZUT-HTTPTTIMEOUT
+ new cutoffZUT  set cutoffZUT=currentZUT-(HTTPTTIMEOUT*10) ; Don't delete tokens up to 10 times the timeout
  ;
  ; Set iterator to start from the cutoff time
  new zutIter set zutIter=cutoffZUT

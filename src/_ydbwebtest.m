@@ -448,10 +448,12 @@ login ; @TEST Test that logging in/tokens/logging out works
  new returnjson do decode^%ydbwebjson($name(return),$name(returnjson))
  new token set token=returnjson("token")
  new authorization set authorization=returnjson("authorization")
+ new timeout set timeout=returnjson("timeout")
  ;
- ; Confirm the validity of the token and authorization
+ ; Confirm the validity of the token and authorization; timeout is 15 minutes by default
  do tf^%ut(token'="")
  do eq^%ut(authorization,"RW")
+ do eq^%ut(timeout,900)
  ;
  ; Now get the XML using the token
  do &libcurl.init
@@ -548,7 +550,7 @@ tTokenCleanup ; @Test Test Token Cleanup with timeout
  ;
  ; Now start a webserver with a username/password passed in $ydbgui_users
  view "setenv":"ydbgui_users":"admin:pass:RW"
- job start^%ydbwebreq:cmd="job --port 55730 --token-timeout 1"
+ job start^%ydbwebreq:cmd="job --port 55730 --token-timeout .1"
  set passwdJob=$zjob
  ;
  ; Need to make sure server is started before we ask curl to connect

@@ -89,14 +89,14 @@ curl -Ss localhost:9080/test/json | jq
 
 To login, POST a JSON of { "username": "xxx", "password": "xxx" } to /api/login.
 You will be sent back a token in the body as { "token": "xxx", "authorization":
-"RO" }. You will get 401 Unauthorized if username/password is not specified
+"RO", timeout:900 }. You will get 401 Unauthorized if username/password is not specified
 correctly.
 
 For example:
 
 ```
 curl -H 'Content-Type: application/json' -d '{ "username": "sam", "password": "foo" }' localhost:9080/login
-{"authorization":"RW","token":"F3joHQj0kyt1Df8ZglOp40"}
+{"authorization":"RW","timeout":900,"token":"F3joHQj0kyt1Df8ZglOp40"}
 ```
 
 If you need to know whether you need to log-in, `/api/auth-mode` will return
@@ -123,11 +123,14 @@ Logging out again is allowed (you will get an HTTP 200 back), but the `status` w
 
 If a token is timed out (by default, it will be timed out in 15 minutes from
 its last use), you will get an HTTP 408 back, with a message of "Token
-timeout". Timeouts are rare, as usually tokens are cleaned up before they are
-detected to exist and to be considered timed out. So don't worry if you don't
-see this message. The more expected response is a 403 with a message of
-"Forbidden". The default timeout can be changed by using `--token-timeout`.
-See below for more details.
+timeout".
+
+Tokens are cleaned at 10 times the timeout. In the default case, they will be
+cleaned in 150 minutes from the last time the token is used. In this case, you
+will get a  403 with a message of "Forbidden".
+
+The default timeout can be changed by using `--token-timeout`.  See below for
+more details.
 
 # Authorization
 Currently, nothing is done with the authorization of RO/RW except to populate
