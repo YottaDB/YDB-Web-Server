@@ -10,6 +10,18 @@ STARTUP ;
  job start^%ydbwebreq:cmd="job --port 55728"
  set myJob=$zjob
  hang .1
+ ;
+ ; Create the users.json file used by some tests
+ new users,json
+ set users(1,"username")="admin"
+ set users(1,"password")="pass"
+ set users(1,"authorization")="RW"
+ do encode^%ydbwebjson($name(users),$name(json))
+ new file set file="users.json"
+ open file:newversion use file
+ new i for i=0:0 set i=$order(json(i)) quit:'i  write json(i)
+ close file
+ ;
  quit
  ;
 SHUTDOWN ;
@@ -412,9 +424,8 @@ login ; @TEST Test that logging in/tokens/logging out works
  ; NB: Numbers as arguments to the M-Unit test asserts help us identify which test failed 
  new passwdJob,status,payload,httpStatus,return
  ;
- ; Now start a webserver with a username/password passed in $ydbgui_users
- view "setenv":"ydbgui_users":"admin:pass:RW"
- job start^%ydbwebreq:cmd="job --port 55730"
+ ; Now start a webserver with a username/password
+ job start^%ydbwebreq:cmd="job --port 55730 --auth-file users.json"
  set passwdJob=$zjob
  ;
  ; Need to make sure server is started before we ask curl to connect
@@ -541,16 +552,14 @@ login ; @TEST Test that logging in/tokens/logging out works
  ; now stop the webserver again
  do stop(passwdJob)
  ;
- view "unsetenv":"ydbgui_users"
  quit
  ;
 tTokenCleanup ; @Test Test Token Cleanup with timeout
  ; NB: Numbers as arguments to the M-Unit test asserts help us identify which test failed 
  new passwdJob,status,payload,httpStatus,return
  ;
- ; Now start a webserver with a username/password passed in $ydbgui_users
- view "setenv":"ydbgui_users":"admin:pass:RW"
- job start^%ydbwebreq:cmd="job --port 55730 --token-timeout .1"
+ ; Now start a webserver with a username/password
+ job start^%ydbwebreq:cmd="job --port 55730 --token-timeout .1 --auth-file users.json"
  set passwdJob=$zjob
  ;
  ; Need to make sure server is started before we ask curl to connect
@@ -592,7 +601,6 @@ tTokenCleanup ; @Test Test Token Cleanup with timeout
  ; now stop the webserver again
  do stop(passwdJob)
  ;
- view "unsetenv":"ydbgui_users"
  quit
  ;
 tLoginNoTimeout ; @TEST Test Logins with no Timeouts
@@ -601,9 +609,8 @@ tLoginNoTimeout ; @TEST Test Logins with no Timeouts
  ; 
  new passwdJob,status,payload,httpStatus,return
  ;
- ; Now start a webserver with a username/password passed in $ydbgui_users
- view "setenv":"ydbgui_users":"admin:pass:RW"
- job start^%ydbwebreq:cmd="job --port 55730 --token-timeout 0"
+ ; Now start a webserver with a username/password passed
+ job start^%ydbwebreq:cmd="job --port 55730 --token-timeout 0 --auth-file users.json"
  set passwdJob=$zjob
  ;
  ; Need to make sure server is started before we ask curl to connect
@@ -634,16 +641,14 @@ tLoginNoTimeout ; @TEST Test Logins with no Timeouts
  ; now stop the webserver again
  do stop(passwdJob)
  ;
- view "unsetenv":"ydbgui_users"
  quit
  ;
 tLoginMultipleServers ; @TEST Test login with multiple servers
  ; --> to ensure they don't cross contaminate
  new job1,job2,status,payload,httpStatus,return
  ;
- ; Now start a webserver with a username/password passed in $ydbgui_users
- view "setenv":"ydbgui_users":"admin:pass:RW"
- job start^%ydbwebreq:cmd="job --port 55730"
+ ; Now start a webserver with a username/password passed
+ job start^%ydbwebreq:cmd="job --port 55730 --auth-file users.json"
  ;
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
@@ -651,7 +656,7 @@ tLoginMultipleServers ; @TEST Test login with multiple servers
  close "sock"
  set job1=$zjob
  ;
- job start^%ydbwebreq:cmd="job --port 55731"
+ job start^%ydbwebreq:cmd="job --port 55731 --auth-file users.json"
  ;
  ; Need to make sure server is started before we ask curl to connect
  open "sock":(connect="127.0.0.1:55731:TCP":attach="client"):5:"socket"
@@ -690,7 +695,50 @@ tLoginMultipleServers ; @TEST Test login with multiple servers
  do stop(job1)
  do stop(job2)
  ;
- view "unsetenv":"ydbgui_users"
+ quit
+ ;
+tusersNoFile ; @TEST Test --auth-file with a file that doesn't exist
+ ;new ofile set ofile=
+ new x,ofile
+ set ofile="/tmp/tusersNoFile"
+ ; job command is picky, so we won't use ofile there
+ job start^%ydbwebreq:(cmd="job --port 55730 --auth-file idontexist.json":out="/tmp/tusersNoFile")
+ for  quit:$zsearch(ofile,-1)'=""  hang .01
+ for  quit:'$zgetjpi($zjob,"ISPROCALIVE")  hang .01
+ open ofile:readonly use ofile
+ for i=1:1 read x(i) quit:$zeof
+ close ofile
+ do tf^%ut(x(1)["File idontexist.json does not exist")
+ quit
+ ;
+tusersInvalidJSON ; @TEST Test --auth-file with a invalid JSON
+ new f,x,ofile
+ set f="badjson.json",ofile="/tmp/tusersInvalidJSON"
+ open f:writeonly use f write "foo boo coo" close f
+ job start^%ydbwebreq:(cmd="job --port 55730 --auth-file badjson.json":out="/tmp/tusersInvalidJSON")
+ for  quit:$zsearch(ofile,-1)'=""  hang .01
+ for  quit:'$zgetjpi($zjob,"ISPROCALIVE")  hang .01
+ open ofile:readonly
+ use ofile
+ for i=1:1 read x(i) quit:$zeof
+ close ofile
+ do tf^%ut(x(1)["User file is not a valid JSON file")
+ quit
+ ;
+tusersValidJSONInvalidKeys ; @TEST Test --auth-file with bad keys
+ new f,x,ofile
+ set f="goodjsonbadkeys.json",ofile="/tmp/tusersValidJSONInvalidKeys"
+ open f:writeonly use f 
+ write "[ { ""username"": ""sam"", ""password"": ""foo"", ""auuuthorization"":""RW"" } ]"
+ close f
+ job start^%ydbwebreq:(cmd="job --port 55730 --auth-file goodjsonbadkeys.json":out="/tmp/tusersValidJSONInvalidKeys")
+ for  quit:$zsearch(ofile,-1)'=""  hang .01
+ for  quit:'$zgetjpi($zjob,"ISPROCALIVE")  hang .01
+ open ofile:readonly
+ use ofile
+ for i=1:1 read x(i) quit:$zeof
+ close ofile
+ do tf^%ut(x(1)["User file is not a valid JSON file")
  quit
  ;
 tauthMode ; @TEST /api/auth-mode
@@ -702,9 +750,8 @@ tauthMode ; @TEST /api/auth-mode
  ;
  kill json
  ;
- ; Now start a webserver with a username/password passed in $ydbgui_users
- view "setenv":"ydbgui_users":"admin:pass:RW"
- job start^%ydbwebreq:cmd="job --port 55730"
+ ; Now start a webserver with a username/password
+ job start^%ydbwebreq:cmd="job --port 55730 --auth-file users.json"
  set passwdJob=$zjob
  ;
  ; Need to make sure server is started before we ask curl to connect
@@ -719,7 +766,6 @@ tauthMode ; @TEST /api/auth-mode
  ;
  ; now stop the webserver again
  do stop(passwdJob)
- view "unsetenv":"ydbgui_users"
  quit
  ;
 tpost ; @TEST simple post

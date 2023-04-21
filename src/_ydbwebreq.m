@@ -10,6 +10,7 @@ start2 ; From the top
  ; Enable CTRL-C
  use $p:(ctrap=$char(3):exception="use $p write ""Caught Ctrl-C, stopping..."",! do deletedb^%ydbwebusers($job) HALT")
  ;
+ ; == Parse Options and Set Default Values
  do cmdline(.options)
  ;
  if '$data(options("port"))      set options("port")=9080                        ; --port nnnn
@@ -25,12 +26,12 @@ start2 ; From the top
  ;
  ; Authentication/Authorization Options
  if '$data(options("auth-stdin"))    set options("auth-stdin")=0                 ; --auth-stdin
+ if '$data(options("auth-file"))     set options("auth-file")=""                 ; --auth-file
  if '$data(options("token-timeout")) set options("token-timeout")=15*60          ; --token-timeout in seconds (default: 15 minutes)
+ ; == END Option Parse
  ;
- ; Global variable
+ ; == Initialize the global variables
  set STARTUPZUT=$ZUT
- ;
- ; Initialize the global variables
  set TCPPORT=options("port")
  set DEBUG=options("debug")
  set TLSCONFIG=options("tlsconfig")
@@ -43,15 +44,20 @@ start2 ; From the top
  ;
  new PARSTDOUT set PARSTDOUT="/proc/"_$JOB_"/fd/1" ; STDOUT for the parent process (to use for logging to STDOUT)
  new PARSTDOUTAV set PARSTDOUTAV=$$STDOUTAVAIL(PARSTDOUT) ; Is it available? (boolean)
- ;
- if (options("auth-stdin"))!($ztrnlnm("ydbgui_users")'="") set HTTPHASUSERS=1
+ ; 
+ ; Set-up Authentication global variables
+ if (options("auth-stdin"))!(options("auth-file")'="") set HTTPHASUSERS=1
  else  set HTTPHASUSERS=0
  ;
  if HTTPHASUSERS set HTTPWEBGLD=$$createTempDB^%ydbwebusers($job)
  new HTTPTTIMEOUT set HTTPTTIMEOUT=options("token-timeout")*1000*1000 ; in microseconds for use with $ZUT
+ ; == END set-up global variables
  ;
+ new error set error=0
  if options("auth-stdin")        do stdin^%ydbwebusers
- if $ztrnlnm("ydbgui_users")'="" do env^%ydbwebusers
+ if options("auth-file")'=""     set error=$$file^%ydbwebusers(options("auth-file"))
+ if error write "Failed to intialize users",! zhalt 99
+ kill error
  ;
  ;
  WRITE "Starting Server at port "_TCPPORT," in directory "_DIRECTORY_" "
@@ -423,7 +429,7 @@ cmdline(options) ; [Private] Process command line options
  do trimleadingstr^%XCMD(.cmdline," ")
  if cmdline="" quit
  for  quit:'$$trimleadingstr^%XCMD(.cmdline,"--")  do ; process options
- . new o for o="port","log","tlsconfig","directory","token-timeout" do
+ . new o for o="port","log","tlsconfig","directory","token-timeout","auth-file" do
  .. if $$trimleadingstr^%XCMD(.cmdline,o) do  quit
  ... set options(o)=$$trimleadingdelimstr^%XCMD(.cmdline)
  ... do trimleadingstr^%XCMD(.cmdline," ")

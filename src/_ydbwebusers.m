@@ -58,33 +58,94 @@ stdin ; Supply Usernames/Password/Authorization on stdin
  write "Please enter usernames, passwords, authorization at the prompts:",!
  write "Enter enter without entering a username to quit from the loop.",!
  new done set done=0
+ new users,userCount
  for  do  quit:done
  . new username,password,authorization
- . read !,"Username: ",username  if (username="")!(username="^") set done=1 quit
+ . read !,"Username: ",username  if (username="")!(username="^") write ! set done=1 quit
  . for  read !,"Password: ",password  quit:password'=""  write ?35,"Must enter a value"
  . for  read !,"Authorization: ",authorization  quit:authorization'=""  write ?35,"Must enter a value"
  . write !
- . do setusers(username,password,STARTUPZUT)
+ . if $increment(userCount)
+ . set users(userCount,"username")=username
+ . set users(userCount,"password")=$$passwordHash(username,password)
+ . set users(userCount,"authorization")=authorization
+ . do setusers(users(userCount,"username"),users(userCount,"password"),users(userCount,"authorization"),STARTUPZUT)
+ write "Saving users to file users.json with passwords hashed",!
+ do saveUsersBack("users.json",.users)
  quit
  ;
-env ; Supply Usernames/Passwords/Authorization in env variable
- new data set data=$ztrnlnm("ydbgui_users")
- new i for i=1:1:$length(data,";") do
- . new datum set datum=$piece(data,";",i)
- . new username   set username=$piece(datum,":",1)
- . new password   set password=$piece(datum,":",2)
- . new authorization set authorization=$piece(datum,":",3)
- . if (username="")!(password="")!(authorization="") quit
- . do setusers(username,password,STARTUPZUT)
+file(file) ; [$$] Read file for usernames and passwords
+           ; 0 = success; 1 = failure
+           ; Hash the passwords if need be
+ new x,i
+ new $etrap,$estack set $etrap="goto fileErr"
+ open file:readonly use file
+ for i=1:1 read x(i) quit:$zeof
+ use $principal close file
+ set $etrap="goto otherErr"
+ ;
+ ; Decode x from JSON to an M array
+ new users,jsonerror
+ do decode^%ydbwebjson($name(x),$name(users),$name(jsonerror))
+ new error set error=0
+ if $data(jsonerror)                 set error=1
+ if '$data(users(1,"username"))      set error=1
+ if '$data(users(1,"password"))      set error=1
+ if '$data(users(1,"authorization")) set error=1
+ ;
+ if error write "User file is not a valid JSON file",! quit error
+ ;
+ ; Check if any of the passwords needs to be hashed
+ new passwordsGotHashed set passwordsGotHashed=0
+ for i=0:0 set i=$order(users(i)) quit:'i  if $extract(users(i,"password"))'="$" do
+ . write "Hashing password for user "_users(i,"username"),!
+ . set users(i,"password")=$$passwordHash(users(i,"username"),users(i,"password"))
+ . set passwordsGotHashed=1
+ ;
+ ; Write back the file if passwords got hashed
+ if passwordsGotHashed do saveUsersBack(file,.users)
+ ;
+ for i=0:0 set i=$order(users(i)) quit:'i  do setusers(users(i,"username"),users(i,"password"),users(i,"authorization"),STARTUPZUT)
+ quit 0
+ ;
+saveUsersBack(file,users)
+ ; TODO: maybe pretty print this, looks ugly now
+ new usersencoded
+ do encode^%ydbwebjson($name(users),$name(usersencoded))
+ open file:newversion use file
+ for i=0:0 set i=$order(usersencoded(i)) quit:'i  write usersencoded(i)
+ close file
  quit
  ;
-hash(username,password,salt)
- ; TODO: If we ever get libsodium integration, use the pwhash API from that instead of $zysuffix
- ;       libsodium currently uses Aragon2, and you can also use scrypt
- quit $zysuffix(username_":"_password_":"_salt)
+fileErr
+ quit:$estack
+ set $ecode=""
+ use $principal
+ write "File "_file_" does not exist or RW permissions are not available",!
+ quit 1
  ;
-setusers(username,password,zut)
- new hash set hash=$$hash(username,password,zut)
+otherErr
+ quit:$estack
+ set $ecode=""
+ use $principal
+ write "Error: ",$ZSTATUS,!
+ quit 1
+ ;
+runtimeHash(username,passwordHash,salt)
+ quit $zysuffix(username_":"_passwordHash_":"_salt)
+ ;
+ ; TODO: replace with libsodium
+passwordHash(username,password)
+ new salt set salt=$extract($translate($justify(username,16)," ","0"),1,16)
+ open "pipe":(shell="/bin/sh":command="mkpasswd -m sha512crypt -S "_salt_" -R 1000000 --stdin":parse)::"pipe"
+ use "pipe"
+ write password,/EOF
+ new hash read hash
+ use $principal close "pipe"
+ quit hash
+ ;
+setusers(username,password,authorization,zut)
+ new hash set hash=$$runtimeHash(username,password,zut)
  set ^|HTTPWEBGLD|users(hash)=authorization
  quit
  ;

@@ -24,34 +24,66 @@ if you can't serve file pages, there is no way to prompt users to log-in.
 
 There are currently two ways to add authentication:
 
-- Start with the `--auth-stdin` flag (recommended), which will prompt you for a
-  username, password, and role. You can enter multiple ones if you wish.
-- Start with the environment variable `ydbgui_users` set to
-  `user:passwd:role(RO/RW);user:passwd:role;...` (not recommended). This is present to assist with
-  testing; but shouldn't be used in production, as it leaves the information
-  visible in the process environment.
+- Start with the `--auth-stdin` flag, which will prompt you for a username,
+  password, and role. You can enter multiple ones if you wish. Users will be
+  saved into a `users.json` file in the current directory, so that you can use
+  the file with `--auth-file </path/to/filename.json>` flag. 
+- Start with the `--auth-file </path/to/filename.json>`. This will load the users in
+  `/path/to/filename.json`. The file has JSON content and the path can be
+  absolute or relative. `/path/to/filename.json` must be in the following
+  format if created manually; passwords cannot start with a `$` as that
+  character is used to identify a password that is hashed (this restriction
+  does not apply if use the `--auth-stdin` flag). 
+
+```
+[
+    {
+        "username": "user1",
+        "password": "plaintext-password1",
+        "authorization": "RW"
+    },
+    {
+        "username": "user2",
+        "password": "plaintext-password2",
+        "authorization": "RO"
+    }
+]
+```
+  Once the file is created, on start-up of the server, the passwords will be
+  hashed and the plain-text passwords will no longer exist.
 
 Examples:
 
 ```
-yottadb -r start^%ydbwebreq --auth-stdin
+$ydb_dist/yottadb -r %ydbwebreq --auth-stdin
 
 Please enter usernames, passwords, authorization at the prompts:
 Enter enter without entering a username to quit from the loop.
 
-Username: *sam*
-Password: *foo*
-Authorization: *RW*
+Username: sam
+Password: foo
+Authorization: RW
 
-Username: *<enter>*
-Starting Server at port 9080 in directory /home/sam/work/gitlab/MWS/build/ at logging level 0 using authentication
+Username: <enter>
+Saving users to file users.json with passwords hashed
+Starting Server at port 9080 in directory xxx at logging level 0 using authentication
 ```
 
 and
 
 ```
-ydbgui_users="sam:foo:RW" yottadb -r %ydbwebreq
-Starting Server at port 9080 in directory /home/sam/work/gitlab/MWS/build/ at logging level 0 using authentication
+$ydb_dist/yottadb -r %ydbwebreq --auth-file users.json
+Starting Server at port 9080 in directory xxx at logging level 0 using authentication
+```
+
+If you manually create a `users.json` file as shown above, you will get a message
+about each password getting hashed:
+
+```
+$ydb_dist/yottadb -r %ydbwebreq --auth-file myusers.json
+Hashing password for user user1
+Hashing password for user user2
+Starting Server at port 9080 in directory xxx at logging level 0 using authentication
 ```
 
 # Login/Token/Logout workflow
@@ -138,7 +170,7 @@ the `HTTPREADWRITE` variable. It's the responsibility of the end application to
 check this variable for how it wants to use it. If you use other authorizations
 besides "RW", `HTTPREADWRITE` will remain zero.
 
-# Miscelleanous considerations
+# Miscellaneous considerations
 ## Using `--token-timeout {n}`
 
 `--token-timeout {n}`, where n is the number of seconds, is another flag
@@ -163,7 +195,9 @@ Log Level 2 shows before each request every timeout interval (15 minutes by defa
 <PARENT> - - [14/APR/2023 12:19:28 PM] Cleaning Tokens
 ```
 
-Log level 3 shows (sensitive) information on all user hashes and tokens every 10 seconds of inactivity:
+Log level 3 shows (sensitive) information on all user hashes and tokens every
+10 seconds of inactivity. Note that users, passwords, or password-hashes are
+never printed, as they are not actually stored anywhere.
 ```
 <PARENT> - - [14/APR/2023 12:11:08 PM] Users
 ^users("d6AyoeTJ7tSyz21TuGsw0E")="RW"

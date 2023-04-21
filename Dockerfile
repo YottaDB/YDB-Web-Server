@@ -14,7 +14,7 @@
 FROM yottadb/yottadb-base:latest-master
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y curl libcurl4-openssl-dev git make cmake pkg-config gcc openssl libssl-dev libconfig-dev libgcrypt-dev libgpgme-dev libicu-dev iproute2
+RUN apt-get update && apt-get install -y curl libcurl4-openssl-dev git make cmake pkg-config gcc openssl libssl-dev libconfig-dev libgcrypt-dev libgpgme-dev libicu-dev iproute2 whois
 
 ENV ydb_dist "/opt/yottadb/current"
 ENV gtm_dist "/opt/yottadb/current"

@@ -82,7 +82,8 @@ login ; POST /api/login { "username": "xxx", "password": "pass" }
  new password set password=$get(httpreq("json","password"))
  if (username="")!(password="") do setError^%ydbwebutils(401,"Unauthorized") QUIT
  ;
- new hash set hash=$$hash^%ydbwebusers(username,password,STARTUPZUT)
+ new passwordHash set passwordHash=$$passwordHash^%ydbwebusers(username,password)
+ new hash set hash=$$runtimeHash^%ydbwebusers(username,passwordHash,STARTUPZUT)
  ;
  tstart ():transactionid="batch"
    if $$checkIfUserExists^%ydbwebusers(hash) do

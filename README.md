@@ -53,6 +53,8 @@ You can stop the server using `$ydb_dist/yottadb -run stop^%ydbwebreq [--port <n
 
 A full list of the options accepted is as follows:
 
+* `--auth-stdin` Start server asking for users and save to file `users.json`.
+* `--auth-file /x/y/z` Start server using in `/x/y/z`.
 * `--debug` Start server in non-forking mode with $ETRAP set to BREAK. Server
   will only handle a single request before terminating. Use this to debug
   problems with the web server.
@@ -71,10 +73,11 @@ A full list of the options accepted is as follows:
   implementation.
 * `--tls client`. Only used by `stop^%ydbwebreq`. Will be deprecated in favor
   of `--tlsconfig`.
+* `--token-timeout n`. Time out tokens (when using either of the auth options)
+  even n seconds. If n is 0, then tokens are not timed out.
 * `--readwrite` An application level flag to indicate that an application is
   readwrite. The flag does not change any of the behavior of the web server
   itself. 
-* `--userpass xxx:yyy` Don't use. Will be deprecated soon.
 
 # Developer Documentation
 See the [doc](doc) folder.

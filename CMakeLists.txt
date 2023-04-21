@@ -30,7 +30,7 @@ set(CMAKE_MODULE_PATH "${ydbcmake_SOURCE_DIR}/ydbcmake/")
 
 project(YDBWebServer
 	LANGUAGES M
-	VERSION 3.0.0)
+	VERSION 3.1.0)
 find_package(YOTTADB REQUIRED)
 
 configure_file(src/_ydbwebversion.m.in src/_ydbwebversion.m @ONLY)
@@ -49,6 +49,9 @@ set(source_files
   src/_ydbwebusers.m
   ${CMAKE_CURRENT_BINARY_DIR}/src/_ydbwebversion.m
 )
+
+# We (currently) need mkpasswd, so make sure it's present
+find_program(mkpasswd mkpasswd REQUIRED)
 
 add_ydb_library(_ydbmwebserver SOURCES ${source_files})
 install_ydb_library(_ydbmwebserver)
