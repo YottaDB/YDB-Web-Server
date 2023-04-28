@@ -18,6 +18,7 @@ URLMAP ;
  ;;GET test/json getjson^%ydbwebapi
  ;;GET test/readwrite readwritetest^%ydbwebapi
  ;;GET test/simtimeout simtimeout^%ydbwebapi
+ ;;GET test/simsodiumerr simsodiumerr^%ydbwebapi
  ;;zzzzz
  ;
  ; Copyright (c) 2019 Christopher Edwards

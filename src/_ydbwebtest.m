@@ -741,6 +741,13 @@ tusersValidJSONInvalidKeys ; @TEST Test --auth-file with bad keys
  do tf^%ut(x(1)["User file is not a valid JSON file")
  quit
  ;
+tsodiumerror ; @TEST Test crashing libsodium runtime
+ new httpStatus,return
+ set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/simsodiumerr")
+ do eq^%ut(httpStatus,500)
+ do tf^%ut(return["YDB-E-ZCCTOPN")
+ quit
+ ;
 tauthMode ; @TEST /api/auth-mode
  new httpStatus,return,json,status,passwdJob
  set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/api/auth-mode")

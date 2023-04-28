@@ -14,7 +14,7 @@
 FROM yottadb/yottadb-base:latest-master
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y curl libcurl4-openssl-dev git make cmake pkg-config gcc openssl libssl-dev libconfig-dev libgcrypt-dev libgpgme-dev libicu-dev iproute2 whois
+RUN apt-get update && apt-get install -y curl libcurl4-openssl-dev git make cmake pkg-config gcc openssl libssl-dev libconfig-dev libgcrypt-dev libgpgme-dev libicu-dev iproute2 libsodium-dev
 
 ENV ydb_dist "/opt/yottadb/current"
 ENV gtm_dist "/opt/yottadb/current"
@@ -41,14 +41,15 @@ RUN openssl req -x509 -days 365 -sha256 -in /mwebserver/certs/ydbgui.csr -key /m
 COPY ci/ydbgui.ydbcrypt /mwebserver/certs/
 ENV ydb_crypt_config /mwebserver/certs/ydbgui.ydbcrypt
 
-# Download YDBCMake (so we don't download it in the YDB-Web-Server)
+# Download YDBCMake & YDBSodium (so we don't download it in the YDB-Web-Server)
 RUN git clone https://gitlab.com/YottaDB/Tools/YDBCMake.git
+RUN git clone https://gitlab.com/YottaDB/Util/YDBSodium.git
 
 # Install YDB-Web-Server
 COPY src/ src/
 COPY CMakeLists.txt .
 COPY _ydbmwebserver.manifest.json.in .
-RUN mkdir build && cd build && cmake -D FETCHCONTENT_SOURCE_DIR_YDBCMAKE=../YDBCMake .. && make install
+RUN mkdir build && cd build && cmake -D FETCHCONTENT_SOURCE_DIR_YDBCMAKE=../YDBCMake -D FETCHCONTENT_SOURCE_DIR_YDBSODIUM=../YDBSodium .. && make install
 
 # Copy these files which are not installed by default
 COPY src/_ydbwebtest.m src/_ut.m src/_ut1.m src/_ydbwebjsonDecodeTest.m src/_ydbwebjsonEncodeTest.m src/_ydbwebjsonTestData1.m src/_ydbwebjsonTestData2.m src/_ydbweburl.m /mwebserver/r/

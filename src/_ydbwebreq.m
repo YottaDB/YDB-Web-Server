@@ -49,6 +49,15 @@ start2 ; From the top
  if (options("auth-stdin"))!(options("auth-file")'="") set HTTPHASUSERS=1
  else  set HTTPHASUSERS=0
  ;
+ new libsodiumFound set libsodiumFound=0
+ if HTTPHASUSERS do
+ . if $zsearch("$ydb_dist/plugin/libsodium.so")="" quit
+ . new xcpath set xcpath=$zsearch("$ydb_dist/plugin/sodium.xc")
+ . if xcpath="" quit
+ . set libsodiumFound=1
+ . if $ztrnlnm("ydb_xc_sodium")="" view "setenv":"ydb_xc_sodium":xcpath
+ if HTTPHASUSERS,'libsodiumFound write "Start-up with users requested, but $ydb_dist/plugin/libsodium.so or sodium.xc not found",! zhalt 99
+ ;
  if HTTPHASUSERS set HTTPWEBGLD=$$createTempDB^%ydbwebusers($job)
  new HTTPTTIMEOUT set HTTPTTIMEOUT=options("token-timeout")*1000*1000 ; in microseconds for use with $ZUT
  ; == END set-up global variables

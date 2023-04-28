@@ -14,6 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 # Authorization and Authentication on the YottaDB Web Server
+Before starting, note that you need to install libsodium-devel on your server
+in order to use the features here. If you haven't installed it prior to
+installing the YDB-Web-Server, please install it and then re-run the install
+for the Web Server.
+
 When you start the server with `start^%ydbwebreq`, nothing in the server will
 require any authentication, and all web services can be reached by anybody if
 they can reach your network. To protect your web services, enable authentication.

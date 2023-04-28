@@ -82,14 +82,11 @@ login ; POST /api/login { "username": "xxx", "password": "pass" }
  new password set password=$get(httpreq("json","password"))
  if (username="")!(password="") do setError^%ydbwebutils(401,"Unauthorized") QUIT
  ;
- new passwordHash set passwordHash=$$passwordHash^%ydbwebusers(username,password)
- new hash set hash=$$runtimeHash^%ydbwebusers(username,passwordHash,STARTUPZUT)
- ;
  tstart ():transactionid="batch"
-   if $$checkIfUserExists^%ydbwebusers(hash) do
+   if $$checkIfUserExists^%ydbwebusers(username,password) do
    . new authorization,token
-   . set token=$$generateToken^%ydbwebusers(hash)
-   . set authorization=$$getAuthorizationFromUser^%ydbwebusers(hash)
+   . set token=$$generateToken^%ydbwebusers(username)
+   . set authorization=$$getAuthorizationFromUser^%ydbwebusers(username)
    . do storeToken^%ydbwebusers(token,authorization)
    . set httprsp("token")=token
    . set httprsp("authorization")=authorization
@@ -162,6 +159,14 @@ simtimeout ; GET /test/simtimeout Simulate Timeout
  set $piece(^|HTTPWEBGLD|tokens(token),"^")=newut
  set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
  set httprsp=oldut_"^"_newut_$c(10,13)
+ quit
+ ;
+simsodiumerr ; GET /test/simsodiumerr Simular libsodium runtime error
+ new oldxc set oldxc=$ztrnlnm("ydb_xc_sodium")
+ view "setenv":"ydb_xc_sodium":"/tmp/i/dont/exist.xc"
+ set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+ set httprsp=$$generateToken^%ydbwebusers("foo")
+ view "setenv":"ydb_xc_sodium":oldxc
  quit
  ;
 FILESYS(ARGPATH) ; Handle reads from File system.

@@ -22,7 +22,7 @@ MWS provides the following features:
 # Installation instructions
 ## Dependencies
 - YottaDB must be installed
-- Operational: mkpasswd (supplied by whois package), gzip (optional), date. 
+- Operational: libsodium (supplied by libsodium-dev[el] package), gzip (optional), date. 
 - Installer only: cmake, pkg-config, C compiler (either GCC or Clang).
 
 ## Installation
@@ -56,7 +56,9 @@ You can stop the server using `$ydb_dist/yottadb -run stop^%ydbwebreq [--port <n
 A full list of the options accepted is as follows:
 
 * `--auth-stdin` Start server asking for users and save to file `users.json`.
-* `--auth-file /x/y/z` Start server using in `/x/y/z`.
+  *Requires that libsodium is installed.*
+* `--auth-file /x/y/z` Start server using in `/x/y/z`. *Requires that libsodium
+  is installed.*
 * `--debug` Start server in non-forking mode with $ETRAP set to BREAK. Server
   will only handle a single request before terminating. Use this to debug
   problems with the web server.

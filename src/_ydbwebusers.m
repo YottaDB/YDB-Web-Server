@@ -62,14 +62,14 @@ stdin ; Supply Usernames/Password/Authorization on stdin
  for  do  quit:done
  . new username,password,authorization
  . read !,"Username: ",username  if (username="")!(username="^") write ! set done=1 quit
- . for  read !,"Password: ",password  quit:password'=""  write ?35,"Must enter a value"
+ . for  use 0:noecho read !,"Password: ",password use 0:echo quit:password'=""  write ?35,"Must enter a value"
  . for  read !,"Authorization: ",authorization  quit:authorization'=""  write ?35,"Must enter a value"
  . write !
  . if $increment(userCount)
  . set users(userCount,"username")=username
- . set users(userCount,"password")=$$passwordHash(username,password)
+ . set users(userCount,"password")=$$passwordHash(password)
  . set users(userCount,"authorization")=authorization
- . do setusers(users(userCount,"username"),users(userCount,"password"),users(userCount,"authorization"),STARTUPZUT)
+ . do setusers(users(userCount,"username"),users(userCount,"password"),users(userCount,"authorization"))
  write "Saving users to file users.json with passwords hashed",!
  do saveUsersBack("users.json",.users)
  quit
@@ -99,21 +99,30 @@ file(file) ; [$$] Read file for usernames and passwords
  new passwordsGotHashed set passwordsGotHashed=0
  for i=0:0 set i=$order(users(i)) quit:'i  if $extract(users(i,"password"))'="$" do
  . write "Hashing password for user "_users(i,"username"),!
- . set users(i,"password")=$$passwordHash(users(i,"username"),users(i,"password"))
+ . set users(i,"password")=$$passwordHash(users(i,"password"))
  . set passwordsGotHashed=1
  ;
  ; Write back the file if passwords got hashed
  if passwordsGotHashed do saveUsersBack(file,.users)
  ;
- for i=0:0 set i=$order(users(i)) quit:'i  do setusers(users(i,"username"),users(i,"password"),users(i,"authorization"),STARTUPZUT)
+ for i=0:0 set i=$order(users(i)) quit:'i  do setusers(users(i,"username"),users(i,"password"),users(i,"authorization"))
  quit 0
  ;
 saveUsersBack(file,users)
- ; TODO: maybe pretty print this, looks ugly now
  new usersencoded
  do encode^%ydbwebjson($name(users),$name(usersencoded))
  open file:newversion use file
- for i=0:0 set i=$order(usersencoded(i)) quit:'i  write usersencoded(i)
+ new tabs set tabs=0
+ new i,j,c,inquotes
+ set inquotes=0
+ for i=0:0 set i=$order(usersencoded(i)) quit:'i  do
+ . for j=1:1:$length(usersencoded(i)) set c=$extract(usersencoded(i),j) do
+ .. if "{["[c write ?(tabs*8),c,! set tabs=tabs+1 write ?(tabs*8) quit
+ .. if "}]"[c write ! set tabs=tabs-1 write ?(tabs*8),c quit
+ .. if c=":" write c," " quit
+ .. if c="""" set inquotes='inquotes write c quit
+ .. if c=",",'inquotes write c,!,?(tabs*8) quit
+ .. write c
  close file
  quit
  ;
@@ -131,46 +140,46 @@ otherErr
  write "Error: ",$ZSTATUS,!
  quit 1
  ;
-runtimeHash(username,passwordHash,salt)
- quit $zysuffix(username_":"_passwordHash_":"_salt)
+passwordHash(password)
+ new x set x=$&sodium.pwhash(password)
+ if x="" write "Error: ",$ZSTATUS,! set $ecode=",U999,"
+ quit x
  ;
- ; TODO: replace with libsodium
-passwordHash(username,password)
- new salt set salt=$extract($translate($justify(username,16)," ","0"),1,16)
- open "pipe":(shell="/bin/sh":command="mkpasswd -m sha512crypt -S "_salt_" -R 1000000 --stdin":parse)::"pipe"
- use "pipe"
- write password,/EOF
- new hash read hash
- use $principal close "pipe"
- quit hash
- ;
-setusers(username,password,authorization,zut)
- new hash set hash=$$runtimeHash(username,password,zut)
- set ^|HTTPWEBGLD|users(hash)=authorization
+setusers(username,passwordHash,authorization)
+ tstart ():transactionid="batch"
+   set ^|HTTPWEBGLD|users(username,"hash")=passwordHash
+   set ^|HTTPWEBGLD|users(username,"auth")=authorization
+ tcommit
  quit
  ;
-getAuthorizationFromUser(userhash)
- quit ^|HTTPWEBGLD|users(userhash)
+getAuthorizationFromUser(username)
+ quit ^|HTTPWEBGLD|users(username,"auth")
  ;
-checkIfUserExists(userhash) 
- quit ''$data(^|HTTPWEBGLD|users(userhash))
+checkIfUserExists(username,password)
+ new storedPasswordHash set storedPasswordHash=$get(^|HTTPWEBGLD|users(username,"hash"))
+ if storedPasswordHash="" quit 0
+ new result set result=$$verifypasswordHash(password,storedPasswordHash)
+ if result=0 quit 1  ; valid password
+ if result=-1 quit 0 ; Invalid password
+ set $ecode=",U999," ; Invalid fallthrough
+ quit ""
  ;
-generateToken(userhash)
- ; TODO: If we ever get libsodium integration, use the PRNG from that instead of /dev/urandom
- new randomString
- new oldio set oldio=$io
- open "/dev/urandom":(readonly:chset="M")
- use "/dev/urandom"
- read randomString#32
- use $io close "/dev/urandom"
- quit $zysuffix(randomString_userhash)
+verifypasswordHash(password,passwordHash)
+ new result set result=$&sodium.pwverify(password,passwordHash)
+ if result=-99 write "Error: ",$ZSTATUS,! set $ecode=",U999,"
+ quit result
+ ;
+generateToken(username)
+ new randomString set randomString=$&sodium.randombuf(32)
+ if randomString="" write "Error: ",$ZSTATUS,! set $ecode=",U999,"
+ quit $zysuffix(randomString_username)
  ;
 storeToken(token,authorization)
  tstart ():transactionid="batch"
    new time set time=$ZUT
    set ^|HTTPWEBGLD|tokensByTime(time,token)=""
    set ^|HTTPWEBGLD|tokens(token)=time_"^"_authorization
-   tcommit
+ tcommit
  quit
  ;
 checkIfTokenExists(token)

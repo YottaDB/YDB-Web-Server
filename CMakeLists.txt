@@ -28,9 +28,34 @@ FetchContent_MakeAvailable(YDBCMake)
 message(STATUS "YDBCMake Source Directory: ${ydbcmake_SOURCE_DIR}")
 set(CMAKE_MODULE_PATH "${ydbcmake_SOURCE_DIR}/ydbcmake/")
 
+find_package(PkgConfig QUIET)
+if (PKG_CONFIG_FOUND)
+	pkg_check_modules(sodium_PKG QUIET libsodium)
+	if (sodium_PKG_FOUND)
+		FetchContent_Declare(YDBsodium
+			GIT_REPOSITORY	https://gitlab.com/YottaDB/Util/YDBsodium.git
+			GIT_TAG		master
+		)
+		FetchContent_MakeAvailable(YDBsodium)
+		message(STATUS "YDBsodium Source Directory: ${ydbsodium_SOURCE_DIR}")
+	endif()
+endif()
+
+if(NOT PKG_CONFIG_FOUND OR NOT sodium_PKG_FOUND)
+	message(STATUS "Could not find libsodium. Cannot use usernames/passwords.")
+else()
+	message(STATUS "Installing libsodium YottaDB plugin. Usernames/passwords will be available.")
+endif()
+
+# Needed because we are compiling C code with flags
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "")
+endif()
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
 project(YDBWebServer
 	LANGUAGES M
-	VERSION 3.1.1)
+	VERSION 3.2.0)
 find_package(YOTTADB REQUIRED)
 
 configure_file(src/_ydbwebversion.m.in src/_ydbwebversion.m @ONLY)
@@ -49,9 +74,6 @@ set(source_files
   src/_ydbwebusers.m
   ${CMAKE_CURRENT_BINARY_DIR}/src/_ydbwebversion.m
 )
-
-# We (currently) need mkpasswd, so make sure it's present
-find_program(mkpasswd mkpasswd REQUIRED)
 
 add_ydb_library(_ydbmwebserver SOURCES ${source_files})
 install_ydb_library(_ydbmwebserver)

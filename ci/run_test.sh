@@ -1,5 +1,5 @@
 #!/bin/bash
-#   Copyright (c) 2022 YottaDB LLC
+#   Copyright (c) 2022-2023 YottaDB LLC
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -41,19 +41,6 @@ elif [ "$1" = "debug" ]; then
 elif [ "$1" = "debug-tls" ]; then
 	export ydb_zstep='n oldio s oldio=$io u 0 zp @$zpos b  u oldio'
 	exec /opt/yottadb/current/yottadb -r %XCMD 'zb TLS^%ydbwebreq set o("debug")=1,o("tlsconfig")="ydbgui" do start^%ydbwebreq(.o)'
-elif [ "$1" = "ydbgui" ]; then
-	git clone https://gitlab.com/YottaDB/UI/YDBGUI.git
-	cd YDBGUI
-	sed -i 's/_weburl/_ydbweburl/g' CMakeLists.txt
-	sed -i 's/webjson/ydbwebjson/g' routines/*
-	mv routines/_weburl.m routines/_ydbweburl.m
-	mkdir build
-	cd build
-	cmake .. && make _ydbguiutf8
-	export ydb_routines="$(readlink -f utf8/_ydbgui.so) $ydb_routines"
-	source /opt/yottadb/current/ydb_env_set
-	cd ../wwwroot
-	exec /opt/yottadb/current/yottadb -r start^%ydbwebreq
 else # "$1" = "test"
 	/opt/yottadb/current/yottadb -r ^%ydbwebtest | tee test_output.txt
 
