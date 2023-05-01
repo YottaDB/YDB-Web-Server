@@ -30,7 +30,7 @@ set(CMAKE_MODULE_PATH "${ydbcmake_SOURCE_DIR}/ydbcmake/")
 
 project(YDBWebServer
 	LANGUAGES M
-	VERSION 3.1.0)
+	VERSION 3.1.1)
 find_package(YOTTADB REQUIRED)
 
 configure_file(src/_ydbwebversion.m.in src/_ydbwebversion.m @ONLY)

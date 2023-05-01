@@ -205,3 +205,9 @@ never printed, as they are not actually stored anywhere.
 ^tokens("v6rLcA6VSsd7IHtGWzkD6B")="1681488658746732^RW"
 ^tokensByTime(1681488658746732,"v6rLcA6VSsd7IHtGWzkD6B")=""
 ```
+
+## The `--readwrite` flag
+If you start the server with users, the `--readwrite` flag no longer applies
+and the `HTTPREADWRITE` variable is set ONLY IF the authorization is "RW". You
+are free to have different authorizations which you can obtain at runtime using
+the API `$$getAuthorizationFromToken^%ydbwebusers(token)`.

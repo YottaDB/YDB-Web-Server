@@ -12,21 +12,23 @@ MWS provides the following features:
  - It is completely stateless.
  - It runs plain RESTful web services rather than implementing a custom protocol.
  - It does not introduce any new data structures.
- - It fully supports JSON out of the box; XML is also supported.
+ - It fully supports JSON out of the box, automatically encoding and decoding
+   JSON requests.
  - It is simple to deploy.
  - The software can also serve file-system based resources that can take
    advantage of the web services.
+ - Optional gzip compression
 
 # Installation instructions
 ## Dependencies
-- Operational: gzip (optional), date, sed. 
-- Installer only: cmake.
+- YottaDB must be installed
+- Operational: mkpasswd (supplied by whois package), gzip (optional), date. 
+- Installer only: cmake, pkg-config, C compiler (either GCC or Clang).
 
 ## Installation
-The tests are not imported as the plugin support is intended to be ran on
-production envrionments.
+Download this repository (git or [download zip](https://gitlab.com/YottaDB/Util/YDB-Web-Server/-/archive/master/YDB-Web-Server-master.zip) and unzip)
 
-Create a build directory:
+Create a build directory in the root of the repository:
 
     mkdir build
     cd build
@@ -77,7 +79,9 @@ A full list of the options accepted is as follows:
   even n seconds. If n is 0, then tokens are not timed out.
 * `--readwrite` An application level flag to indicate that an application is
   readwrite. The flag does not change any of the behavior of the web server
-  itself. 
+  itself.
+
+For user set-up, see [doc/auth-auth.md](doc/auth-auth.md).
 
 # Developer Documentation
 See the [doc](doc) folder.
