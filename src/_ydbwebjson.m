@@ -1,93 +1,81 @@
 %ydbwebjson ;SLC/KCM -- Decode/Encode JSON;2019-07-16  2:17 PM
- ;
- ; Note:  Since the routines use closed array references, VVROOT and VVERR
- ;        are used to reduce risk of naming conflicts on the closed array.
- ;
-decode(VVJSON,VVROOT,VVERR) G DIRECT^%ydbwebjsonDecode
-DECODE(VVJSON,VVROOT,VVERR)  ; Set JSON object into closed array ref VVROOT
- ; Examples: D decode^%ydbwebjson("MYJSON","LOCALVAR","LOCALERR")
- ;           D decode^%ydbwebjson("^MYJSON(1)","^GLO(99)","^TMP($J)")
- ;
- ; VVJSON: string/array containing serialized JSON object
- ; VVROOT: closed array reference for M representation of object
- ;  VVERR: contains error messages, defaults to ^TMP("%ydbwebjsonerr",$J)
- ;
- ;   VVIDX: points to next character in JSON string to process
- ; VVSTACK: manages stack of subscripts
- ;  VVPROP: true if next string is property name, otherwise treat as value
- ;
- G DIRECT^%ydbwebjsonDecode
- ;
-encode(VVROOT,VVJSON,VVERR) G DIRECT^%ydbwebjsonEncode
-ENCODE(VVROOT,VVJSON,VVERR) ; VVROOT (M structure) --> VVJSON (array of strings)
- ; Examples:  D encode^%ydbwebjson("^GLO(99,2)","^TMP($J)")
- ;            D encode^%ydbwebjson("LOCALVAR","MYJSON","LOCALERR")
- ;
- ; VVROOT: closed array reference for M representation of object
- ; VVJSON: destination variable for the string array formatted as JSON
- ;  VVERR: contains error messages, defaults to ^TMP("%ydbwebjsonerr",$J)
- ;
- G DIRECT^%ydbwebjsonEncode
- ;
- ;
-esc(x) Q $$ESC^%ydbwebjsonEncode(X)
-ESC(X) ; Escape string for JSON
- Q $$ESC^%ydbwebjsonEncode(X)
- ;
-ues(x) Q $$UES^%ydbwebjsonDecode(X)
-UES(X) ; Unescape JSON string
- Q $$UES^%ydbwebjsonDecode(X)
- ;
-ERRX(ID,VAL) ; Set the appropriate error message
- ; switch (ID) -- XERRX ends statement
- N ERRMSG
- ;
- ; Decode Error Messages
- ;
- I ID="STL{" S ERRMSG="Stack too large for new object." G XERRX
- I ID="SUF}" S ERRMSG="Stack Underflow - extra } found" G XERRX
- I ID="STL[" S ERRMSG="Stack too large for new array." G XERRX
- I ID="SUF]" S ERRMSG="Stack Underflow - extra ] found." G XERRX
- I ID="OBM" S ERRMSG="Array mismatch - expected ] got }." G XERRX
- I ID="ARM" S ERRMSG="Object mismatch - expected } got ]." G XERRX
- I ID="MPN" S ERRMSG="Missing property name." G XERRX
- I ID="EXT" S ERRMSG="Expected true, got "_VAL G XERRX
- I ID="EXF" S ERRMSG="Expected false, got "_VAL G XERRX
- I ID="EXN" S ERRMSG="Expected null, got "_VAL G XERRX
- I ID="TKN" S ERRMSG="Unable to identify type of token, value was "_VAL G XERRX
- I ID="SCT" S ERRMSG="Stack mismatch - exit stack level was  "_VAL G XERRX
- I ID="EIQ" S ERRMSG="Close quote not found before end of input." G XERRX
- I ID="EIU" S ERRMSG="Unexpected end of input while unescaping." G XERRX
- I ID="RSB" S ERRMSG="Reverse search for \ past beginning of input." G XERRX
- I ID="ORN" S ERRMSG="Overrun while scanning name." G XERRX
- I ID="OR#" S ERRMSG="Overrun while scanning number." G XERRX
- I ID="ORB" S ERRMSG="Overrun while scanning boolean." G XERRX
- I ID="ESC" S ERRMSG="Escaped character not recognized"_VAL G XERRX
- I ID="TRL" S ERRMSG="Trailing characters in JSON object: "_VAL G XERRX
- ;
- ; Encode Error Messages
- ;
- I ID="SOB" S ERRMSG="Unable to serialize node as object, value was "_VAL G XERRX
- I ID="SAR" S ERRMSG="Unable to serialize node as array, value was "_VAL G XERRX
- S ERRMSG="Unspecified error "_ID_" "_$G(VAL)
-XERRX ; end switch
- S @VVERR@(0)=$G(@VVERR@(0))+1
- S @VVERR@(@VVERR@(0))=ERRMSG
- S VVERRORS=VVERRORS+1
- Q
- ;
- ; Most of this code is public domain. New lower case entry points
- ; Copyright 2013-2019 Sam Habiel
- ; Copyright (c) 2022 YottaDB LLC
- ;
- ;Licensed under the Apache License, Version 2.0 (the "License");
- ;you may not use this file except in compliance with the License.
- ;You may obtain a copy of the License at
- ;
- ;    http://www.apache.org/licenses/LICENSE-2.0
- ;
- ;Unless required by applicable law or agreed to in writing, software
- ;distributed under the License is distributed on an "AS IS" BASIS,
- ;WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- ;See the License for the specific language governing permissions and
- ;limitations under the License.
+	;
+	; Note:  Since the routines use closed array references, %ydbroot and %ydberr
+	;        are used to reduce risk of naming conflicts on the closed array.
+	;
+	; Set JSON object into closed array ref %ydbroot
+	; Examples: do decode^%ydbwebjson("MYJSON","LOCALVAR","LOCALERR")
+	;           do decode^%ydbwebjson("^MYJSON(1)","^GLO(99)","^TMP($J)")
+	;
+	; %ydbjson: string/array containing serialized JSON object
+	; %ydbroot: closed array reference for M representation of object
+	;  %ydberr: contains error messages, defaults to ^TMP("%ydbwebjsonerr",$J)
+	;
+decode(%ydbjson,%ydbroot,%ydberr) goto direct^%ydbwebjsonDecode
+	;
+	; Examples:  do encode^%ydbwebjson("^GLO(99,2)","^TMP($J)")
+	;            do encode^%ydbwebjson("LOCALVAR","MYJSON","LOCALERR")
+	;
+	; %ydbroot: closed array reference for M representation of object
+	; %ydbjson: destination variable for the string array formatted as JSON
+	;  %ydberr: contains error messages, defaults to ^TMP("%ydbwebjsonerr",$J)
+	;
+encode(%ydbroot,%ydbjson,%ydberr) goto direct^%ydbwebjsonEncode
+	;
+	;
+esc(x) quit $$esc^%ydbwebjsonEncode(x) ; Escape string for JSON
+ues(x) quit $$ues^%ydbwebjsonDecode(x) ; Unescape JSON string
+	;
+errx(id,val) ; Set the appropriate error message
+	; switch (id) -- xerrx ends statement
+	N errmsg
+	;
+	; Decode Error Messages
+	;
+	if id="STL{" set errmsg="Stack too large for new object." goto xerrx
+	if id="SUF}" set errmsg="Stack Underflow - extra } found" goto xerrx
+	if id="STL[" set errmsg="Stack too large for new array." goto xerrx
+	if id="SUF]" set errmsg="Stack Underflow - extra ] found." goto xerrx
+	if id="OBM" set errmsg="Array mismatch - expected ] got }." goto xerrx
+	if id="ARM" set errmsg="Object mismatch - expected } got ]." goto xerrx
+	if id="MPN" set errmsg="Missing property name." goto xerrx
+	if id="EXT" set errmsg="Expected true, got "_val goto xerrx
+	if id="EXF" set errmsg="Expected false, got "_val goto xerrx
+	if id="EXN" set errmsg="Expected null, got "_val goto xerrx
+	if id="TKN" set errmsg="Unable to identify type of token, value was "_val goto xerrx
+	if id="SCT" set errmsg="Stack mismatch - exit stack level was  "_val goto xerrx
+	if id="EIQ" set errmsg="Close quote not found before end of input." goto xerrx
+	if id="EIU" set errmsg="Unexpected end of input while unescaping." goto xerrx
+	if id="RSB" set errmsg="Reverse search for \ past beginning of input." goto xerrx
+	if id="ORN" set errmsg="Overrun while scanning name." goto xerrx
+	if id="OR#" set errmsg="Overrun while scanning number." goto xerrx
+	if id="ORB" set errmsg="Overrun while scanning boolean." goto xerrx
+	if id="ESC" set errmsg="Escaped character not recognized"_val goto xerrx
+	if id="TRL" set errmsg="Trailing characters in JSON object: "_val goto xerrx
+	;
+	; Encode Error Messages
+	;
+	if id="SOB" set errmsg="Unable to serialize node as object, value was "_val goto xerrx
+	if id="SAR" set errmsg="Unable to serialize node as array, value was "_val goto xerrx
+	set errmsg="Unspecified error "_id_" "_$get(val)
+xerrx ; end switch
+	set @%ydberr@(0)=$get(@%ydberr@(0))+1
+	set @%ydberr@(@%ydberr@(0))=errmsg
+	set %ydberrors=%ydberrors+1
+	quit
+	;
+	; Most of this code is public domain. New lower case entry points
+	; Copyright 2013-2019 Sam Habiel
+	; Copyright (c) 2022-2023 YottaDB LLC
+	;
+	;Licensed under the Apache License, Version 2.0 (the "License");
+	;you may not use this file except in compliance with the License.
+	;You may obtain a copy of the License at
+	;
+	;    http://www.apache.org/licenses/LICENSE-2.0
+	;
+	;Unless required by applicable law or agreed to in writing, software
+	;distributed under the License is distributed on an "AS IS" BASIS,
+	;WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	;See the License for the specific language governing permissions and
+	;limitations under the License.

@@ -74,9 +74,9 @@ A full list of the options accepted is as follows:
   https://docs.yottadb.com/ProgrammersGuide/ioproc.html#tls-on-yottadb for
   instructions, and [Dockerfile](Dockerfile) and
   [docker-startup.sh](docker-configuration/docker-startup.sh) for its
-  implementation.
-* `--tls client`. Only used by `stop^%ydbwebreq`. Will be deprecated in favor
-  of `--tlsconfig`.
+  implementation. Note that due to the design of the YottaDB TLS plug-in code,
+  you need to specify different values for `--tlsconfig`: to start look for a server
+  entry, and stop look for a client entry.
 * `--token-timeout n`. Time out tokens (when using either of the auth options)
   even n seconds. If n is 0, then tokens are not timed out.
 * `--readwrite` An application level flag to indicate that an application is

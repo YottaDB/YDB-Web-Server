@@ -1,221 +1,210 @@
 %ydbwebjsonEncodeTest ;SLC/KCM -- Unit tests for JSON encoding;2019-11-14  9:08 AM
- D EN^%ut($T(+0),3)
- quit
- ;
-STARTUP  ; Run once before all tests
- Q
-SHUTDOWN ; Run once after all tests
- Q
-SETUP    ; Run before each test
- Q
-TEARDOWN ; Run after each test
- Q
-ASSERT(EXPECT,ACTUAL) ; convenience
- D CHKEQ^%ut(EXPECT,ACTUAL)
- Q
- ;
-NUMERIC ;; @TEST is numeric function
- D ASSERT(0,$$NUMERIC^%ydbwebjsonEncode("2COWS"))
- D ASSERT(0,$$NUMERIC^%ydbwebjsonEncode("007"))
- D ASSERT(0,$$NUMERIC^%ydbwebjsonEncode(".4"))
- D ASSERT(1,$$NUMERIC^%ydbwebjsonEncode("0.4"))
- D ASSERT(0,$$NUMERIC^%ydbwebjsonEncode("-.4"))
- D ASSERT(1,$$NUMERIC^%ydbwebjsonEncode("-0.4"))
- D ASSERT(1,$$NUMERIC^%ydbwebjsonEncode(0))
- D ASSERT(0,$$NUMERIC^%ydbwebjsonEncode(".0"))
- D ASSERT(1,$$NUMERIC^%ydbwebjsonEncode(3.1416))
- D ASSERT(1,$$NUMERIC^%ydbwebjsonEncode("2.3E-2"))
- D ASSERT(1,$$NUMERIC^%ydbwebjsonEncode(0.4E12))
- D ASSERT(0,$$NUMERIC^%ydbwebjsonEncode(".4E-12"))
- Q
-NEARZERO ;; @TEST encode of numbers near 0
- ;;{"s":"0.5","t":"-0.6","x":0.42,"y":-0.44}
- N X,JSON,ERR
- S X("s")="0.5",X("s","\s")=""
- S X("t")="-0.6",X("t","\s")=""
- S X("x")=0.42
- S X("y")=-0.44
- D ENCODE^%ydbwebjson("X","JSON","ERR")
- D ASSERT($P($T(NEARZERO+1),";;",2,99),JSON(1))
- Q
-JSONESC ;; @TEST create JSON escaped string
- N X
- S X=$$ESC^%ydbwebjson("String with \ in the middle")
- D ASSERT("String with \\ in the middle",X)
- S X=$$ESC^%ydbwebjson("\ is the first character of this string")
- D ASSERT("\\ is the first character of this string",X)
- S X=$$ESC^%ydbwebjson("The last character of this string is \")
- D ASSERT("The last character of this string is \\",X)
- S X=$$ESC^%ydbwebjson("\one\two\three\")
- D ASSERT("\\one\\two\\three\\",X)
- S X=$$ESC^%ydbwebjson("A vee shape: \/"_$C(9)_"TABBED"_$C(9)_"and line endings."_$C(10,13,12))
- D ASSERT("A vee shape: \\\/\tTABBED\tand line endings.\n\r\f",X)
- S X=$$ESC^%ydbwebjson("""This text is quoted""")
- D ASSERT("\""This text is quoted\""",X)
- S X=$$ESC^%ydbwebjson("This text contains an embedded"_$C(26)_" control character")
- D ASSERT("This text contains an embedded\u001A control character",X)
- S X=$$ESC^%ydbwebjson("This contains tab"_$C(9)_" and control"_$C(22)_" characters")
- D ASSERT("This contains tab\t and control\u0016 characters",X)
- S X=$$ESC^%ydbwebjson("This has embedded NUL"_$C(0)_" character.")
- D ASSERT("This has embedded NUL character.",X)
- Q
-BASIC ;; @TEST encode basic object as JSON
- N X,JSON
- S X("myObj","booleanT")="true"
- S X("myObj","booleanF")="false"
- S X("myObj","numeric")=3.1416
- S X("myObj","nullValue")="null"
- S X("myObj","array",1)="one"
- S X("myObj","array",2)="two"
- S X("myObj","array",3)="three"
- S X("myObj","subObject","fieldA")="hello"
- S X("myObj","subObject","fieldB")="world"
- D ENCODE^%ydbwebjson("X","JSON")
- D ASSERT($$TARGET("BASIC"),JSON(1)_JSON(2))
- Q
-VALS ;; @TEST encode simple values only object as JSON
- N X,JSON
- S X("prop1")="property1"
- S X("bool1")="true"
- S X("num1")="2.1e3",X("num1","\n")=""
- S X("arr",1)="apple"
- S X("arr",2)="orange"
- S X("arr",3)="pear"
- S X("arr",4,"obj")="4th array item is object"
- D ENCODE^%ydbwebjson("X","JSON")
- D ASSERT($$TARGET("VALS"),JSON(1)_JSON(2))
- Q
-LONG ;; @TEST encode object with continuation nodes for value
- N X,I,JSON,FILLER,TARGET
- S FILLER=", this will extend the line out to at least 78 characters."_$C(10)
- S X("title")="My note test title"
- S X("note")="This is the first line of the note.  Here are ""quotes"" and a \ and a /."_$C(10)
- F I=1:1:60 S X("note","\",I)="Additional Line #"_I_FILLER
- D ENCODE^%ydbwebjson("X","JSON")
- S TARGET=$$TARGET("LONG")
- D ASSERT(TARGET,$E(JSON(1)_JSON(2)_JSON(3),1,$L(TARGET)))
- D ASSERT(1,$D(JSON(62)))
- D ASSERT(0,$D(JSON(63)))
- S TARGET="t least 78 characters.\n"",""title"":"
- D ASSERT(TARGET,$E(JSON(61),$L(JSON(61))-$L(TARGET)+1,$L(JSON(61))))
- Q
-PRE ;; @TEST encode object where parts are already JSON encoded
- N X,JSON,TARGET
- S X("count")=3
- S X("menu",1,":",1)=$$TARGET("NODES",1)
- S X("menu",2,":",1)=$$TARGET("NODES",2)
- S X("menu",3,":",1)=$$TARGET("NODES",3)
- S X("template",":")=$$TARGET("NODES",4)
- D ENCODE^%ydbwebjson("X","JSON")
- S TARGET=$$TARGET("PRE",1)_$$TARGET("PRE",2)
- D ASSERT(TARGET,JSON(1)_JSON(2)_JSON(3))
- Q
-WP ;; @TEST word processing nodes inside object
- N Y,JSON,TARGET,ERR
- D BUILDY("WP")
- D ENCODE^%ydbwebjson("Y","JSON","ERR")
- D ASSERT(0,$D(ERR))
- S TARGET=$$TARGET("WPOUT")_$$TARGET("WPOUT",2)_$$TARGET("WPOUT",3)
- D ASSERT(TARGET,JSON(1)_JSON(2)_JSON(3)_JSON(4)_JSON(5)_JSON(6)_JSON(7))
- Q
-LTZERO ;; @TEST leading / trailing zeros get preserved
- N Y,JSON,TARGET
- S Y("count")=737
- S Y("ssn")="000427930"
- S Y("icd")="626.00"
- S Y("price")=".65" ;M still treats this as a number, so in JSON it's 0.65
- S Y("code")=".77",Y("code","\s")=""
- S Y("errors")=0
- D ENCODE^%ydbwebjson("Y","JSON")
- D ASSERT($$TARGET("LTZERO"),JSON(1))
- Q
-STRINGS ;; @TEST force encoding as string
- N Y,JSON,TARGET,ERR
- S Y("count")=234567
- S Y("hl7Time")="20120919"
- S Y("hl7Time","\s")=""
- S Y("icd")="722.10"
- S Y("name")="Duck,Donald"
- D ENCODE^%ydbwebjson("Y","JSON","ERR")
- D ASSERT(0,$D(ERR))
- D ASSERT($$TARGET("STRINGS"),JSON(1))
- Q
-LABELS ;; @TEST unusual labels
- ;;{"top":[{"10":"number 10",",":"comma",":":"colon","\\":"backslash","a":"normal letter"}]}
- ;
- ; NOTE: we don't allow a label to contain a quote (")
- N Y,JSON,ERR,Y2
- S Y("top",1,":")="colon"
- S Y("top",1,"\")="backslash"
- S Y("top",1,",")="comma"
- S Y("top",1,"a")="normal letter"
- S Y("top",1,"""10")="number 10"
- D ENCODE^%ydbwebjson("Y","JSON","ERR")
- D ASSERT(0,$D(ERR))
- D ASSERT($P($T(LABELS+1),";;",2,99),JSON(1))
- Q
-EXAMPLE ;; @TEST encode samples that are on JSON.ORG
- N Y,JSON,TARGET
- D BUILDY("EX1IN")
- D ENCODE^%ydbwebjson("Y","JSON")
- S TARGET=$$TARGET("EX1OUT")
- D ASSERT(TARGET,JSON(1)_JSON(2))
- D BUILDY("EX2IN")
- D ENCODE^%ydbwebjson("Y","JSON")
- S TARGET=$$TARGET("EX2OUT")_$$TARGET("EX2OUT",2)
- D ASSERT(TARGET,JSON(1)_JSON(2)_JSON(3)_JSON(4)_JSON(5))
- D BUILDY("EX3IN")
- D ENCODE^%ydbwebjson("Y","JSON")
- S TARGET=$$TARGET("EX3OUT")_$$TARGET("EX3OUT",2)
- D ASSERT(TARGET,JSON(1)_JSON(2)_JSON(3)_JSON(4))
- D BUILDY("EX4IN")
- D ENCODE^%ydbwebjson("Y","JSON")
- S TARGET=$$TARGET("EX4OUT")
- D ASSERT(TARGET,$E(JSON(1)_JSON(2)_JSON(3),1,215))
- D ASSERT(95,$L(JSON(1)))
- Q
-KEYESC ;; @TEST keys should be escaped
- N Y,JSON,TARGET
- S Y("names","x(834038,""237745"":""240474"")")="AREG"
- D ENCODE^%ydbwebjson("Y","JSON")
- D ASSERT(JSON(1),"{""names"":{""x(834038,\""237745\"":\""240474\"")"":""AREG""}}")
- Q
-EXTARRAY ;; @TEST No top object; first level is an array
- ; Bug reported by Winfried on comp.lang.mumps
- n t,t2
- s t="[{""s"":1,""n"":123},{""N1"":true,""N2"":""true""}]"
- d decode^%ydbwebjsonDecode("t","json","jerr")
- D ASSERT($d(jerr),0)
- k jerr
- d encode^%ydbwebjsonEncode("json","t2","jerr")
- D ASSERT($d(jerr),0)
- D ASSERT(t2(1),"[{""n"":123,""s"":1},{""N1"":true,""N2"":""true""}]")
- quit
- ;
-BUILDY(LABEL) ; build Y array based on LABEL
- ; expects Y from EXAMPLE
- N I,X
- K Y
- F I=1:1 S X=$P($T(@LABEL+I^%ydbwebjsonTestData2),";;",2,999) Q:X="zzzzz"  X "S "_X
- Q
-TARGET(ID,OFFSET) ; values to test against
- S OFFSET=$G(OFFSET,1)
- Q $P($T(@ID+OFFSET^%ydbwebjsonTestData2),";;",2,999)
- ;
- ; Portions of this code are public domain, but it was extensively modified
- ; Copyright 2016 Accenture Federal Services
- ; Copyright 2013-2019 Sam Habiel
- ; Copyright 2019 Christopher Edwards
- ; Copyright (c) 2022 YottaDB LLC
- ;
- ;Licensed under the Apache License, Version 2.0 (the "License");
- ;you may not use this file except in compliance with the License.
- ;You may obtain a copy of the License at
- ;
- ;    http://www.apache.org/licenses/LICENSE-2.0
- ;
- ;Unless required by applicable law or agreed to in writing, software
- ;distributed under the License is distributed on an "AS IS" BASIS,
- ;WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- ;See the License for the specific language governing permissions and
- ;limitations under the License.
+	do en^%ut($text(+0),3)
+	quit
+	;
+numeric ;; @TEST is numeric function
+	do eq^%ut(0,$$numeric^%ydbwebjsonEncode("2COWS"))
+	do eq^%ut(0,$$numeric^%ydbwebjsonEncode("007"))
+	do eq^%ut(0,$$numeric^%ydbwebjsonEncode(".4"))
+	do eq^%ut(1,$$numeric^%ydbwebjsonEncode("0.4"))
+	do eq^%ut(0,$$numeric^%ydbwebjsonEncode("-.4"))
+	do eq^%ut(1,$$numeric^%ydbwebjsonEncode("-0.4"))
+	do eq^%ut(1,$$numeric^%ydbwebjsonEncode(0))
+	do eq^%ut(0,$$numeric^%ydbwebjsonEncode(".0"))
+	do eq^%ut(1,$$numeric^%ydbwebjsonEncode(3.1416))
+	do eq^%ut(1,$$numeric^%ydbwebjsonEncode("2.3E-2"))
+	do eq^%ut(1,$$numeric^%ydbwebjsonEncode(0.4E12))
+	do eq^%ut(0,$$numeric^%ydbwebjsonEncode(".4E-12"))
+	quit
+nearzero ;; @TEST encode of numbers near 0
+	;;{"s":"0.5","t":"-0.6","x":0.42,"y":-0.44}
+	new x,json,err
+	set x("s")="0.5",x("s","\s")=""
+	set x("t")="-0.6",x("t","\s")=""
+	set x("x")=0.42
+	set x("y")=-0.44
+	do encode^%ydbwebjson("x","json","err")
+	do eq^%ut($zpiece($text(nearzero+1),";;",2,99),json(1))
+	quit
+jsonesc ;; @TEST create JSON escaped string
+	new x
+	set x=$$esc^%ydbwebjson("String with \ in the middle")
+	do eq^%ut("String with \\ in the middle",x)
+	set x=$$esc^%ydbwebjson("\ is the first character of this string")
+	do eq^%ut("\\ is the first character of this string",x)
+	set x=$$esc^%ydbwebjson("The last character of this string is \")
+	do eq^%ut("The last character of this string is \\",x)
+	set x=$$esc^%ydbwebjson("\one\two\three\")
+	do eq^%ut("\\one\\two\\three\\",x)
+	set x=$$esc^%ydbwebjson("A vee shape: \/"_$char(9)_"TABBED"_$char(9)_"and line endings."_$char(10,13,12))
+	do eq^%ut("A vee shape: \\\/\tTABBED\tand line endings.\n\r\f",x)
+	set x=$$esc^%ydbwebjson("""This text is quoted""")
+	do eq^%ut("\""This text is quoted\""",x)
+	set x=$$esc^%ydbwebjson("This text contains an embedded"_$char(26)_" control character")
+	do eq^%ut("This text contains an embedded\u001A control character",x)
+	set x=$$esc^%ydbwebjson("This contains tab"_$char(9)_" and control"_$char(22)_" characters")
+	do eq^%ut("This contains tab\t and control\u0016 characters",x)
+	set x=$$esc^%ydbwebjson("This has embedded NUL"_$char(0)_" character.")
+	do eq^%ut("This has embedded NUL character.",x)
+	quit
+basic ;; @TEST encode basic object as JSON
+	new x,json
+	set x("myObj","booleanT")="true"
+	set x("myObj","booleanF")="false"
+	set x("myObj","numeric")=3.1416
+	set x("myObj","nullValue")="null"
+	set x("myObj","array",1)="one"
+	set x("myObj","array",2)="two"
+	set x("myObj","array",3)="three"
+	set x("myObj","subObject","fieldA")="hello"
+	set x("myObj","subObject","fieldB")="world"
+	do encode^%ydbwebjson("x","json")
+	do eq^%ut($$target("basic"),json(1)_json(2))
+	quit
+vals ;; @TEST encode simple values only object as JSON
+	new x,json
+	set x("prop1")="property1"
+	set x("bool1")="true"
+	set x("num1")="2.1e3",x("num1","\n")=""
+	set x("arr",1)="apple"
+	set x("arr",2)="orange"
+	set x("arr",3)="pear"
+	set x("arr",4,"obj")="4th array item is object"
+	do encode^%ydbwebjson("x","json")
+	do eq^%ut($$target("vals"),json(1)_json(2))
+	quit
+long ;; @TEST encode object with continuation nodes for value
+	new x,i,json,filler,target
+	set filler=", this will extend the line out to at least 78 characters."_$char(10)
+	set x("title")="My note test title"
+	set x("note")="This is the first line of the note.  Here are ""quotes"" and a \ and a /."_$char(10)
+	for i=1:1:60 set x("note","\",i)="Additional Line #"_i_filler
+	do encode^%ydbwebjson("x","json")
+	set target=$$target("long")
+	do eq^%ut(target,$extract(json(1)_json(2)_json(3),1,$length(target)))
+	do eq^%ut(1,$data(json(62)))
+	do eq^%ut(0,$data(json(63)))
+	set target="t least 78 characters.\n"",""title"":"
+	do eq^%ut(target,$extract(json(61),$length(json(61))-$length(target)+1,$length(json(61))))
+	quit
+pre ;; @TEST encode object where parts are already JSON encoded
+	new x,json,target
+	set x("count")=3
+	set x("menu",1,":",1)=$$target("nodes",1)
+	set x("menu",2,":",1)=$$target("nodes",2)
+	set x("menu",3,":",1)=$$target("nodes",3)
+	set x("template",":")=$$target("nodes",4)
+	do encode^%ydbwebjson("x","json")
+	set target=$$target("pre",1)_$$target("pre",2)
+	do eq^%ut(target,json(1)_json(2)_json(3))
+	quit
+wp ;; @TEST word processing nodes inside object
+	new y,json,target,err
+	do buildy("wp")
+	do encode^%ydbwebjson("y","json","err")
+	do eq^%ut(0,$data(err))
+	set target=$$target("wpout")_$$target("wpout",2)_$$target("wpout",3)
+	do eq^%ut(target,json(1)_json(2)_json(3)_json(4)_json(5)_json(6)_json(7))
+	quit
+ltzero ;; @TEST leading / trailing zeros get preserved
+	new y,json,target
+	set y("count")=737
+	set y("ssn")="000427930"
+	set y("icd")="626.00"
+	set y("price")=".65" ;M still treats this as a number, so in json it's 0.65
+	set y("code")=".77",y("code","\s")=""
+	set y("errors")=0
+	do encode^%ydbwebjson("y","json")
+	do eq^%ut($$target("ltzero"),json(1))
+	quit
+strings ;; @TEST force encoding as string
+	new y,json,target,err
+	set y("count")=234567
+	set y("hl7Time")="20120919"
+	set y("hl7Time","\s")=""
+	set y("icd")="722.10"
+	set y("name")="Duck,Donald"
+	do encode^%ydbwebjson("y","json","err")
+	do eq^%ut(0,$data(err))
+	do eq^%ut($$target("strings"),json(1))
+	quit
+labels ;; @TEST unusual labels
+	;;{"top":[{"10":"number 10",",":"comma",":":"colon","\\":"backslash","a":"normal letter"}]}
+	;
+	; NOTE: we don't allow a label to contain a quote (")
+	new y,json,err
+	set y("top",1,":")="colon"
+	set y("top",1,"\")="backslash"
+	set y("top",1,",")="comma"
+	set y("top",1,"a")="normal letter"
+	set y("top",1,"""10")="number 10"
+	do encode^%ydbwebjson("y","json","err")
+	do eq^%ut(0,$data(err))
+	do eq^%ut($zpiece($text(labels+1),";;",2,99),json(1))
+	quit
+example ;; @TEST encode samples that are on JSON.ORG
+	new y,json,target
+	do buildy("ex1in")
+	do encode^%ydbwebjson("y","json")
+	set target=$$target("ex1out")
+	do eq^%ut(target,json(1)_json(2))
+	do buildy("ex2in")
+	do encode^%ydbwebjson("y","json")
+	set target=$$target("ex2out")_$$target("ex2out",2)
+	do eq^%ut(target,json(1)_json(2)_json(3)_json(4)_json(5))
+	do buildy("ex3in")
+	do encode^%ydbwebjson("y","json")
+	set target=$$target("ex3out")_$$target("ex3out",2)
+	do eq^%ut(target,json(1)_json(2)_json(3)_json(4))
+	do buildy("ex4in")
+	do encode^%ydbwebjson("y","json")
+	set target=$$target("ex4out")
+	do eq^%ut(target,$extract(json(1)_json(2)_json(3),1,215))
+	do eq^%ut(95,$length(json(1)))
+	quit
+keyesc ;; @TEST keys should be escaped
+	new y,json,target
+	set y("names","x(834038,""237745"":""240474"")")="AREG"
+	do encode^%ydbwebjson("y","json")
+	do eq^%ut(json(1),"{""names"":{""x(834038,\""237745\"":\""240474\"")"":""AREG""}}")
+	quit
+extarray ;; @TEST No top object; first level is an array
+	; Bug reported by Winfried on comp.lang.mumps
+	new t,t2
+	set t="[{""s"":1,""n"":123},{""N1"":true,""N2"":""true""}]"
+	do decode^%ydbwebjsonDecode("t","json","jerr")
+	do eq^%ut($data(jerr),0)
+	kill jerr
+	do encode^%ydbwebjsonEncode("json","t2","jerr")
+	do eq^%ut($data(jerr),0)
+	do eq^%ut(t2(1),"[{""n"":123,""s"":1},{""N1"":true,""N2"":""true""}]")
+	quit
+	;
+buildy(label) ; build y array based on label
+	; expects y from EXAMPLE
+	new i,x
+	kill y
+	for i=1:1 set x=$zpiece($text(@label+i^%ydbwebjsonTestData2),";;",2,999) quit:x="zzzzz"  xecute "S "_x
+	quit
+target(id,offset) ; values to test against
+	set offset=$get(offset,1)
+	quit $zpiece($text(@id+offset^%ydbwebjsonTestData2),";;",2,999)
+	;
+	; Portions of this code are public domain, but it was extensively modified
+	; Copyright 2016 Accenture Federal Services
+	; Copyright 2013-2019 Sam Habiel
+	; Copyright 2019 Christopher Edwards
+	; Copyright (c) 2022-2023 YottaDB LLC
+	;
+	;Licensed under the Apache License, Version 2.0 (the "License");
+	;you may not use this file except in compliance with the License.
+	;You may obtain a copy of the License at
+	;
+	;    http://www.apache.org/licenses/LICENSE-2.0
+	;
+	;Unless required by applicable law or agreed to in writing, software
+	;distributed under the License is distributed on an "AS IS" BASIS,
+	;WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	;See the License for the specific language governing permissions and
+	;limitations under the License.
+

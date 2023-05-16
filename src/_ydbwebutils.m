@@ -1,211 +1,234 @@
 %ydbwebutils ;SLC/KCM -- Utilities for HTTP communications ;Jun 20, 2022@12:21
- ;
-UP(X) Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-LOW(X) Q $TR(X,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
- ;
-LTRIM(%X) ; Trim whitespace from left side of string
- ; derived from XLFSTR, but also removes tabs
- N %L,%R
- S %L=1,%R=$L(%X)
- F %L=1:1:$L(%X) Q:$A($E(%X,%L))>32
- Q $E(%X,%L,%R)
- ;
-URLENC(X) ; Encode a string for use in a URL
- ; This algorithm is based on https://github.com/lparenteau/DataBallet/blob/master/r/url.m
- ; The old algorithm didn't work for non-UTF8 characters and was designed around ASCII only
- ; Output variable
- N ENCODED S ENCODED=""
- ;
- ; Construct the do not encode array in SAFE (includes English alphabet)
- N I,SAFE
- F I=45,46,95,126,48:1:57,65:1:90,97:1:122 S SAFE(I)=""
- ;
- F I=1:1:$ZL(X) D
- . N BYTE S BYTE=$ZE(X,I) ; Each byte (char)
- . N VAL  S VAL=$ZA(X,I)  ; byte value (0-255)
- . I $D(SAFE(VAL)) S ENCODED=ENCODED_BYTE QUIT
- . I BYTE=" " S ENCODED=ENCODED_"+" QUIT
- . S CODE=$$DEC2HEX(VAL),CODE=$TR($J(CODE,2)," ","0")
- . S ENCODED=ENCODED_"%"_CODE QUIT
- Q ENCODED
- ;
-URLDEC(X,PATH) ; Decode a URL-encoded string
- N I,OUT,FRAG,ASC
- S:'$G(PATH) X=$TR(X,"+"," ") ; don't convert '+' in path fragment
- F I=1:1:$L(X,"%") D
- . I I=1 S OUT=$P(X,"%") Q
- . S FRAG=$P(X,"%",I),ASC=$E(FRAG,1,2),FRAG=$E(FRAG,3,$L(FRAG))
- . I $L(ASC) S OUT=OUT_$ZCH($$HEX2DEC(ASC))
- . S OUT=OUT_FRAG
- Q OUT
- ;
-REFSIZE(ROOT) ; return the size of glvn passed in ROOT
- Q:'$D(ROOT) 0 Q:'$L(ROOT) 0
- Q:$G(ROOT)="" 0
- N SIZE,I
- S SIZE=0
- S ROOT=$NA(@ROOT)
- I $D(@ROOT)#2 S SIZE=$ZL(@ROOT)
- N ORIG,OL S ORIG=ROOT,OL=$QL(ROOT) ; Orig, Orig Length
- F  S ROOT=$Q(@ROOT) Q:ROOT=""  Q:($NA(@ROOT,OL)'=$NA(@ORIG,OL))  S SIZE=SIZE+$ZL(@ROOT)
- S ROOT=ORIG
- Q SIZE
- ;
-VARSIZE(V) ; return the size of a variable
- Q:'$D(V) 0
- N SIZE,I
- S SIZE=0
- I $D(V)#2 S SIZE=$ZL(V)
- I $D(V)>1 S I="" F  S I=$O(V(I)) Q:'I  S SIZE=SIZE+$ZL(V(I))
- Q SIZE
- ;
-setError(ERRCODE,MESSAGE,ERRARRAY) G setError1
-SETERROR(ERRCODE,MESSAGE,ERRARRAY) ; set error info into HTTPERR
-setError1 ;
- ; causes HTTPERR system variable to be set
- ; ERRCODE:  query errors are 100-199, update errors are 200-299, M errors are 500
- ; MESSAGE:  additional explanatory material
- ; ERRARRAY: An Array to use instead of the Message for information to the user.
- ;
- N ERRNAME,TOPMSG
- S HTTPERR=400,TOPMSG="Bad Request"
- ; update errors (200-299)
- I ERRCODE=201 S ERRNAME="Unable to encode JSON"
- I ERRCODE=202 S ERRNAME="Unable to decode JSON"
- ; Generic Errors
- I ERRCODE=301 S ERRNAME="Required variable undefined"
- ; HTTP errors
- I ERRCODE=400 S ERRNAME="Bad Request"
- I ERRCODE=401 S ERRNAME="Unauthorized"
- I ERRCODE=403 S ERRNAME="Forbidden"
- I ERRCODE=404 S ERRNAME="Not Found"
- I ERRCODE=405 S ERRNAME="Method Not Allowed"
- I ERRCODE=408 S ERRNAME="Token Timeout"
- ; system errors (500-599)
- I ERRCODE=501 S ERRNAME="M execution error"
- I ERRCODE=502 S ERRNAME="Unable to lock record"
- I '$L($G(ERRNAME)) S ERRNAME="Unknown error"
- ;
- I ERRCODE>500 S HTTPERR=500,TOPMSG="Internal Server Error"  ; M Server Error
- I ERRCODE<500,ERRCODE>400 S HTTPERR=ERRCODE,TOPMSG=ERRNAME  ; Other HTTP Errors
- ;
- I $I(HTTPERR("count"))
- S HTTPERR("apiVersion")="1.1"
- S HTTPERR("error","code")=HTTPERR
- S HTTPERR("error","toperror")=TOPMSG
- S HTTPERR("error","request")=$G(HTTPREQ("method"))_" "_$G(HTTPREQ("path"))_" "_$G(HTTPREQ("query"))
- I $D(ERRARRAY) D
- . S HTTPERR("error","errors",HTTPERR("count"),"reason")=MESSAGE
- . M HTTPERR("error","errors",HTTPERR("count"),"message")=ERRARRAY  ; VEN/SMH
- E  D
- . S HTTPERR("error","errors",HTTPERR("count"),"reason")=ERRCODE
- . S HTTPERR("error","errors",HTTPERR("count"),"errname")=ERRNAME
- . S HTTPERR("error","errors",HTTPERR("count"),"message")=MESSAGE
- Q
-customError(ERRCODE,ERRARRAY) ; set custom error into HTTPERR
- S HTTPERR=ERRCODE
- M HTTPERR=ERRARRAY
- QUIT
- ;
- ; Cache specific functions (selected one support GT.M too!)
- ;
+	;
+urlenc(x) ; Encode a string for use in a URL
+	; This algorithm is based on https://github.com/lparenteau/DataBallet/blob/master/r/url.m
+	; The old algorithm didn't work for non-UTF8 characters and was designed around ASCII only
+	; Output variable
+	new encoded set encoded=""
+	;
+	; Construct the do not encode array in SAFE (includes English alphabet)
+	new i,safe
+	for i=45,46,95,126,48:1:57,65:1:90,97:1:122 set safe(i)=""
+	;
+	for i=1:1:$zlength(x) d
+	. new byte set byte=$zextract(x,i) ; each byte (char)
+	. new val  set val=$zascii(x,i)  ; byte value (0-255)
+	. if $data(safe(val)) set encoded=encoded_byte quit
+	. if byte=" " set encoded=encoded_"+" quit
+	. set code=$$dec2hex(val),code=$translate($justify(code,2)," ","0")
+	. set encoded=encoded_"%"_code quit
+	quit encoded
+	;
+urldec(x,path) ; Decode a URL-encoded string
+	new i,out,frag,asc
+	set:'$get(path) x=$translate(x,"+"," ") ; don't convert '+' in path fragment
+	for i=1:1:$length(x,"%") d
+	. if i=1 set out=$zpiece(x,"%") q
+	. set frag=$zpiece(x,"%",i),asc=$extract(frag,1,2),frag=$extract(frag,3,$length(frag))
+	. if $length(asc) set out=out_$zchar($$hex2dec(asc))
+	. set out=out_frag
+	quit out
+	;
+refsize(root) ; return the size of glvn passed in root
+	quit:'$data(root) 0 quit:'$length(root) 0
+	quit:$get(root)="" 0
+	new size,i
+	set size=0
+	set root=$na(@root)
+	if $data(@root)#2 set size=$zlength(@root)
+	new orig,ol set orig=root,ol=$qlength(root) ; orig, orig length
+	for  set root=$query(@root) quit:root=""  quit:($na(@root,ol)'=$na(@orig,ol))  set size=size+$zlength(@root)
+	set root=orig
+	quit size
+	;
+varsize(v) ; return the size of a variable
+	quit:'$data(v) 0
+	new size,i
+	set size=0
+	if $data(v)#2 set size=$zlength(v)
+	if $data(v)>1 set i="" for  set i=$o(v(i)) quit:'i  set size=size+$zlength(v(i))
+	quit size
+	;
+setError(errcode,message,errarray)
+	; causes httperr system variable to be set
+	; errcode:  query errors are 100-199, update errors are 200-299, M errors are 500
+	; message:  additional explanatory material
+	; errarray: An Array to use instead of the Message for information to the user.
+	;
+	new errname,topmsg
+	set httperr=400,topmsg="Bad Request"
+	; update errors (200-299)
+	if errcode=201 set errname="Unable to encode JSON"
+	if errcode=202 set errname="Unable to decode JSON"
+	; Generic Errors
+	if errcode=301 set errname="Required variable undefined"
+	; HTTP errors
+	if errcode=400 set errname="Bad Request"
+	if errcode=401 set errname="Unauthorized"
+	if errcode=403 set errname="Forbidden"
+	if errcode=404 set errname="Not Found"
+	if errcode=405 set errname="Method Not Allowed"
+	if errcode=408 set errname="Token Timeout"
+	; system errors (500-599)
+	if errcode=501 set errname="M execution error"
+	if errcode=502 set errname="Unable to lock record"
+	if '$length($get(errname)) set errname="Unknown error"
+	;
+	if errcode>500 set httperr=500,topmsg="Internal Server Error"  ; M Server Error
+	if errcode<500,errcode>400 set httperr=errcode,topmsg=errname  ; Other HTTP Errors
+	;
+	if $increment(httperr("count"))
+	set httperr("apiVersion")="1.1"
+	set httperr("error","code")=httperr
+	set httperr("error","toperror")=topmsg
+	set httperr("error","request")=$get(HTTPREQ("method"))_" "_$get(HTTPREQ("path"))_" "_$get(HTTPREQ("query"))
+	if $data(errarray) do
+	. set httperr("error","errors",httperr("count"),"reason")=message
+	. merge httperr("error","errors",httperr("count"),"message")=errarray
+	else  do
+	. set httperr("error","errors",httperr("count"),"reason")=errcode
+	. set httperr("error","errors",httperr("count"),"errname")=errname
+	. set httperr("error","errors",httperr("count"),"message")=message
+	quit
+customError(errcode,errarray) ; set custom error into httperr
+	set httperr=errcode
+	merge httperr=errarray
+	quit
+	;
+	;
 GMT() ; return HTTP date string (this is really using UTC instead of GMT)
- N TM,DAY
- N OUT
- N D S D="datetimepipe"
- N OLDIO S OLDIO=$I
- O D:(shell="/bin/sh":comm="date -u +'%a, %d %b %Y %H:%M:%S %Z'|sed 's/UTC/GMT/g'")::"pipe"
- U D R OUT:1 
- U OLDIO C D
- Q OUT
- ;
-DEC2HEX(NUM) ; return a decimal number as hex
- Q $$BASE(NUM,10,16)
- ;
-HEX2DEC(HEX) ; return a hex number as decimal
- Q $$BASE(HEX,16,10)
- ;
-BASE(%X1,%X2,%X3) ;Convert %X1 from %X2 base to %X3 base
- I (%X2<2)!(%X2>16)!(%X3<2)!(%X3>16) Q -1
- Q $$CNV($$DEC(%X1,%X2),%X3)
-DEC(N,B) ;Cnv N from B to 10
- Q:B=10 N N I,Y S Y=0
- F I=1:1:$L(N) S Y=Y*B+($F("0123456789ABCDEF",$E(N,I))-2)
- Q Y
-CNV(N,B) ;Cnv N from 10 to B
- Q:B=10 N N I,Y S Y=""
- F I=1:1 S Y=$E("0123456789ABCDEF",N#B+1)_Y,N=N\B Q:N<1
- Q Y
- ;
-PARSE10(BODY,PARSED) ; Parse BODY by CRLF and return the array in PARSED
- ; Input: BODY: By Ref - BODY to be parsed
- ; Output: PARSED: By Ref - PARSED Output
- ; E.g. if BODY is ABC_CRLF_DEF_CRLF, PARSED is PARSED(1)="ABC",PARSED(2)="DEF",PARSED(3)=""
- N LL S LL="" ; Last line
- N L S L=1 ; Line counter.
- K PARSED ; Kill return array
- N I S I="" F  S I=$O(BODY(I)) Q:'I  D  ; For each 4000 character block
- . N J F J=1:1:$L(BODY(I),$C(10)) D  ; For each line
- . . S:(J=1&(L>1)) L=L-1 ; Replace old line (see 2 lines below)
- . . S PARSED(L)=$TR($P(BODY(I),$C(10),J),$C(13)) ; Get line; Take CR out if there.
- . . S:(J=1&(L>1)) PARSED(L)=LL_PARSED(L) ; If first line, append the last line before it and replace it.
- . . S LL=PARSED(L) ; Set last line
- . . S L=L+1 ; LineNumber++
- QUIT
- ;
-ADDCRLF(RESULT) ; Add CRLF to each line
- I $E($G(RESULT))="^" D  QUIT  ; Global
- . N V,QL S V=RESULT,QL=$QL(V) F  S V=$Q(@V) Q:V=""  Q:$NA(@V,QL)'=RESULT  S @V=@V_$C(13,10)
- E  D  ; Local variable passed by reference
- . I $D(RESULT)#2 S RESULT=RESULT_$C(13,10)
- . N V S V=$NA(RESULT) F  S V=$Q(@V) Q:V=""  S @V=@V_$C(13,10)
- QUIT
- ;
-UNKARGS(ARGS,LIST) ; returns true if any argument is unknown
- N X,UNKNOWN
- S UNKNOWN=0,LIST=","_LIST_","
- S X="" F  S X=$O(ARGS(X)) Q:X=""  I LIST'[(","_X_",") D
- . S UNKNOWN=1
- . D SETERROR(111,X)
- Q UNKNOWN
- ;
-ENCODE64(X) ;
- N RGZ,RGZ1,RGZ2,RGZ3,RGZ4,RGZ5,RGZ6
- S RGZ=$$INIT64,RGZ1=""
- F RGZ2=1:3:$L(X) D
- .S RGZ3=0,RGZ6=""
- .F RGZ4=0:1:2 D
- ..S RGZ5=$A(X,RGZ2+RGZ4),RGZ3=RGZ3*256+$S(RGZ5<0:0,1:RGZ5)
- .F RGZ4=1:1:4 S RGZ6=$E(RGZ,RGZ3#64+2)_RGZ6,RGZ3=RGZ3\64
- .S RGZ1=RGZ1_RGZ6
- S RGZ2=$L(X)#3
- S:RGZ2 RGZ3=$L(RGZ1),$E(RGZ1,RGZ3-2+RGZ2,RGZ3)=$E("==",RGZ2,2)
- Q RGZ1
-DECODE64(X) ;
- N RGZ,RGZ1,RGZ2,RGZ3,RGZ4,RGZ5,RGZ6
- S RGZ=$$INIT64,RGZ1=""
- F RGZ2=1:4:$L(X) D
- .S RGZ3=0,RGZ6=""
- .F RGZ4=0:1:3 D
- ..S RGZ5=$F(RGZ,$E(X,RGZ2+RGZ4))-3
- ..S RGZ3=RGZ3*64+$S(RGZ5<0:0,1:RGZ5)
- .F RGZ4=0:1:2 S RGZ6=$C(RGZ3#256)_RGZ6,RGZ3=RGZ3\256
- .S RGZ1=RGZ1_RGZ6
- Q $E(RGZ1,1,$L(RGZ1)-$L(X,"=")+1)
-INIT64() Q "=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
- ;
- ; Portions of this code are public domain, but it was extensively modified
- ; Copyright (c) 2013-2019 Sam Habiel
- ; Copyright (c) 2022-2023 YottaDB LLC
- ;
- ;Licensed under the Apache License, Version 2.0 (the "License");
- ;you may not use this file except in compliance with the License.
- ;You may obtain a copy of the License at
- ;
- ;    http://www.apache.org/licenses/LICENSE-2.0
- ;
- ;Unless required by applicable law or agreed to in writing, software
- ;distributed under the License is distributed on an "AS IS" BASIS,
- ;WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- ;See the License for the specific language governing permissions and
- ;limitations under the License.
+	new tm,day
+	new out
+	new d set d="datetimepipe"
+	new oldio set oldio=$i
+	open d:(shell="/bin/sh":comm="date -u +'%a, %d %b %Y %H:%M:%S %Z'|sed 's/UTC/GMT/g'")::"pipe"
+	use d read out:1 
+	use oldio close d
+	quit out
+	;
+dec2hex(num) ; return a decimal number as hex
+	quit $$base(num,10,16)
+	;
+hex2dec(hex) ; return a hex number as decimal
+	quit $$base(hex,16,10)
+	;
+base(%x1,%x2,%x3) ;convert %x1 from %x2 base to %x3 base
+	if (%x2<2)!(%x2>16)!(%x3<2)!(%x3>16) quit -1
+	quit $$cnv($$dec(%x1,%x2),%x3)
+dec(n,b) ;cnv n from b to 10
+	quit:b=10 n
+	n i,y set y=0
+	for i=1:1:$length(n) set y=y*b+($find("0123456789ABCDEF",$extract(n,i))-2)
+	quit y
+cnv(n,b) ;Cnv n from 10 to b
+	quit:b=10 n
+	new i,y set y=""
+	for i=1:1 set y=$extract("0123456789ABCDEF",n#b+1)_y,n=n\b quit:n<1
+	quit y
+	;
+parse10(body,parsed) ; Parse BODY by CRLF and return the array in PARSED
+	; Input: body: By Ref - body to be parsed
+	; Output: parsed: By Ref - parsed Output
+	; E.g. if body is ABC_CRLF_DEF_CRLF, parsed is parsed(1)="ABC",parsed(2)="DEF",parsed(3)=""
+	new ll set ll="" ; Last line
+	new l set l=1 ; Line counter.
+	kill parsed ; Kill return array
+	new i set i="" for  set i=$o(body(i)) quit:'i  do  ; for each 4000 character block
+	. new j for j=1:1:$length(body(i),$char(10)) do  ; for each line
+	. . set:(j=1&(l>1)) l=l-1 ; replace old line (see 2 lines below)
+	. . set parsed(l)=$translate($zpiece(body(i),$char(10),j),$char(13)) ; get line; take cr out if there.
+	. . set:(j=1&(l>1)) parsed(l)=ll_parsed(l) ; if first line, append the last line before it and replace it.
+	. . set ll=parsed(l) ; set last line
+	. . set l=l+1 ; linenumber++
+	QUIT
+	;
+addcrlf(result) ; add crlf to each line
+	if $extract($get(result))="^" do  quit  ; global
+	. new v,ql set v=result,ql=$qlength(v) for  set v=$query(@v) quit:v=""  quit:$na(@v,ql)'=result  set @v=@v_$char(13,10)
+	else  do  ; local variable passed by reference
+	. if $data(result)#2 set result=result_$char(13,10)
+	. n v s v=$na(result) for  set v=$query(@v) quit:v=""  set @v=@v_$char(13,10)
+	quit
+	;
+unkargs(args,list) ; returns true if any argument is unknown
+	new x,unknown
+	set unknown=0,list=","_list_","
+	set x="" for  set x=$o(args(x)) quit:x=""  if list'[(","_x_",") do
+	. set unknown=1
+	. do setError(111,x)
+	quit unknown
+	;
+encode64(x) ;
+	new z,z1,z2,z3,z4,z5,z6
+	set z=$$init64,z1=""
+	for z2=1:3:$length(x) d
+	.s z3=0,z6=""
+	.f z4=0:1:2 d
+	..s z5=$ascii(x,z2+z4),z3=z3*256+$select(z5<0:0,1:z5)
+	.f z4=1:1:4 set z6=$extract(z,z3#64+2)_z6,z3=z3\64
+	.s z1=z1_z6
+	set z2=$length(x)#3
+	set:z2 z3=$length(z1),$extract(z1,z3-2+z2,z3)=$extract("==",z2,2)
+	quit z1
+decode64(x) ;
+	new z,z1,z2,z3,z4,z5,z6
+	set z=$$init64,z1=""
+	for z2=1:4:$length(x) d
+	.s z3=0,z6=""
+	.f z4=0:1:3 d
+	..s z5=$find(z,$extract(x,z2+z4))-3
+	..s z3=z3*64+$select(z5<0:0,1:z5)
+	.f z4=0:1:2 set z6=$char(z3#256)_z6,z3=z3\256
+	.s z1=z1_z6
+	quit $extract(z1,1,$length(z1)-$length(x,"=")+1)
+init64() quit "=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	;
+sstep
+	set $zstep="new oldIO set oldIO=$IO open parentStdout use parentStdout write $justify($zpos,25)_"":""_$text(@$zpos),! use oldIO close parentStdout zstep into"
+	zbreak sstep+3:"zstep into"
+	new oldIO set oldIO=$IO
+	open parentStdout use parentStdout
+	write !,"Stepping STARTED",!
+	use oldIO close parentStdout
+	quit
+	;
+stdout(msg) ; [Internal] Log to STDOUT
+	; 127.0.0.1 - - [02/Sep/2022 11:03:33] "GET / HTTP/1.1" 200 -
+	quit:'parentStdoutAvailable ; Device not writable
+	new oldIO set oldIO=$IO
+	open parentStdout use parentStdout
+	write httpremoteip," - - [",$ZDATE($H,"DD/MON/YYYY 12:60:SS AM"),"] "
+	write msg,!
+	use oldIO close parentStdout
+	quit
+	;
+stdoutzw(v)
+	quit:'parentStdoutAvailable ; Device not writable
+	new oldIO set oldIO=$IO
+	open parentStdout use parentStdout
+	zwrite @v
+	use oldIO close parentStdout
+	quit
+	;
+stdoutavail(d) ; $$ Is STDOUT available to write to?
+	new $etrap set $etrap="set $ecode="""" quit 0"
+	open d close d
+	quit 1
+	;
+	;
+	; Portions of this code are public domain, but it was extensively modified
+	; Copyright (c) 2013-2019 Sam Habiel
+	; Copyright (c) 2022-2023 YottaDB LLC
+	;
+	;Licensed under the Apache License, Version 2.0 (the "License");
+	;you may not use this file except in compliance with the License.
+	;You may obtain a copy of the License at
+	;
+	;    http://www.apache.org/licenses/LICENSE-2.0
+	;
+	;Unless required by applicable law or agreed to in writing, software
+	;distributed under the License is distributed on an "AS IS" BASIS,
+	;WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	;See the License for the specific language governing permissions and
+	;limitations under the License.
+

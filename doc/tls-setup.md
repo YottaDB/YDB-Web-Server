@@ -62,8 +62,8 @@ $ydb_dist/plugin/ydbcrypt/maskpass <<< 'monkey1234' | cut -d ":" -f2 | tr -d ' '
 # In your environment file, ydbtls_passwd_{section name} to be that hash. For me, it's:
 export ydbtls_passwd_server="30A22B54B46618B4361F"
 
-# Run the server like this, substituting the {section name} appropriately. here it is server
-$ydb_dist/mumps -r %XCMD 'do start^%ydbwebreq(9080,0,"server")'
+# Run the server like this, substituting the {section name} appropriately. Here it is server. See how to stop it below (although you can CTRL-C here and stop it).
+$ydb_dist/yottadb -run ^%ydbwebreq --port 9080 --tlsconfig server
 
 # Test the server like this (cacert to supply curl with the self-signed Certificate)
 curl --cacert /data/certs/mycert.pem https://localhost:9080
@@ -98,4 +98,10 @@ Starting Server at port 9080 using TLS configuration server
 ::ffff:172.17.0.1 - - [15/SEP/2022 01:19:58 PM]               $TEST: 1
 ::ffff:172.17.0.1 - - [15/SEP/2022 01:19:58 PM] GET / HTTP/1.1
 ::ffff:172.17.0.1 - - [15/SEP/2022 01:19:58 PM] Disconnect/Halt 15
+```
+
+To stop, use `--tlsconfig client`, as in:
+
+```
+$ydb_dist/yottadb -run stop^%ydbwebreq --port 9080 --tlsconfig client
 ```
