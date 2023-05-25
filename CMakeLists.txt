@@ -30,6 +30,7 @@ set(CMAKE_MODULE_PATH "${ydbcmake_SOURCE_DIR}/ydbcmake/")
 
 find_package(PkgConfig QUIET)
 if (PKG_CONFIG_FOUND)
+	enable_language(C)
 	pkg_check_modules(sodium_PKG QUIET libsodium)
 	if (sodium_PKG_FOUND)
 		FetchContent_Declare(YDBsodium
