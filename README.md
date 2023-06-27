@@ -85,10 +85,13 @@ A full list of the options accepted is as follows:
 
 For user set-up, see [doc/auth-auth.md](doc/auth-auth.md).
 
+To set-up TLS, see [doc/tls-setup.md](doc/tls-setup.md).
+
+To set-up the Web Server as a `systemd` service so that it will start and stop
+automatically with the system, see [doc/systemd.md](doc/systemd.md).
+
 # Developer Documentation
 See the [doc](doc) folder.
-
-To set-up TLS, see [doc/tls-setup.md](doc/tls-setup.md).
 
 # Testing Documentation
 There are extensive [unit tests](doc/testing.md) with coverage.
