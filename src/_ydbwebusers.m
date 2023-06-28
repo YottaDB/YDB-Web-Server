@@ -31,13 +31,13 @@ createTempDB(ppid) ; [$$] Create a temporary database - returns global directory
 	. new x for i=1:1 read x(i) quit:$zeof
 	. close "pipe"
 	. if $zclose'=0 write "An error occurred... Contact YottaDB Support.",! zwrite x 
-	do:httplog>0 stdout^%ydbwebutils("Created database - global directory: "_gld)
-	do:httplog>0 stdout^%ydbwebutils("                 - database file   : "_dbfile)
+	do:httplog>0 stdout^%ydbwebutils("Created tokens database - global directory: "_gld)
+	do:httplog>0 stdout^%ydbwebutils("                        - database file   : "_dbfile)
 	quit gld
 	;
 deletedb(ppid) ; [Private] Delete database files
 	; ppid = parent process id
-	use $principal write "Deleting database files",!
+	use $principal write "Deleting tokens database files (if present)",!
 	new tmp set tmp=$$tmp()
 	open tmp_"/ydbgui"_ppid_".dat":(readonly:exception="goto deletedb1")
 	close tmp_"/ydbgui"_ppid_".dat":delete

@@ -109,7 +109,7 @@ loop ; wait for connection, spawn process to handle it. GOTO favorite.
 	. new q set q=""""
 	. new arg set arg=q_"SOCKET:"_childsock_q
 	. new tcpio ; Don't pass this guy down
-	. new j set j="child:(input="_arg_":output="_arg_":pass:cmd=""child^%ydbwebreq -p "_httpparentpid_""")"
+	. new j set j="child:(input="_arg_":output="_arg_":error=""/dev/null"":pass:cmd=""child^%ydbwebreq -p "_httpparentpid_""")"
 	. job @j
 	goto loop
 	quit
