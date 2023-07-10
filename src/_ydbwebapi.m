@@ -176,6 +176,12 @@ uppercase ; GET /test/uppercase Use upper case variables
 	set HTTPRSP=@$query(args)
 	quit
 	;
+globaldir ; GET /test/zgbldir Test X-YDB-Global-Directory
+	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+	set ^x=1 ; This ensures that we actually write to a database
+	set httprsp=$zgbldir
+	quit
+	;
 filesys(argpath) ; Handle reads from File system.
 	; Ensure Directory has a trailing slash
 	; Otherwise a directory like $ydb_dist/plugin/etc/ydbgui is not readable

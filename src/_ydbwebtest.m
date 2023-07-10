@@ -855,6 +855,7 @@ tEtag1 ; @TEST Test caching with Etag
 	do &libcurl.init
 	do &libcurl.addHeader("If-None-Match: 0x88375a6109328211d2e5093f3162e517")
 	new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test.txt")
+	do &libcurl.cleanup
 	do eq^%ut(httpStatus,304)
 	;
 	quit
@@ -894,6 +895,35 @@ tUppercase ; @TEST uppercase HTTP variables
 	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/uppercase?foo=boo")
 	do eq^%ut(httpStatus,200)
 	do eq^%ut(return,"boo")
+	quit
+	;
+tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
+	new olddir set olddir=$zdirectory
+	new x
+	set $zdirectory="/tmp/"
+	new gdefile set gdefile="/tmp/mumps.gld"
+	open gdefile:newversion
+	use gdefile
+	write "change -segment DEFAULT -file=""/tmp/mumps.dat""",!
+	write "exit",!
+	close gdefile
+	open "pipe":(shell="/bin/bash":command="ydb_gbldir=/tmp/testdb.gld $ydb_dist/yottadb -r GDE @"_gdefile)::"pipe"
+	use "pipe"
+	for i=1:1 read x(i) quit:$zeof
+	close "pipe"
+	kill x
+	open "pipe":(shell="/bin/bash":command="ydb_gbldir=/tmp/testdb.gld $ydb_dist/mupip create")::"pipe"
+	use "pipe"
+	for i=1:1 read x(i) quit:$zeof
+	close "pipe"
+	;
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
+	new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
+	do &libcurl.cleanup
+	do eq^%ut(httpStatus,200)
+	do eq^%ut(return,"/tmp/testdb.gld")
+	set $zdirectory=olddir
 	quit
 	;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.

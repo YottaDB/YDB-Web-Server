@@ -63,7 +63,10 @@ respond ; find entry point to handle request and call it
 	. do decode^%ydbwebjson($name(httpreq("body")),$name(httpreq("json")),$name(%webjsonerror))
 	. if $data(%webjsonerror) do setError^%ydbwebutils("201","JSON Converstion Error",.%webjsonerror)
 	;
-	if '$data(%webjsonerror) do @routine
+	if '$data(%webjsonerror) do
+	. ; If a custom global directory is supplied, switch to that global directory
+	. if $data(httpreq("header","x-ydb-global-directory")) new $zgbldir set $zgbldir=httpreq("header","x-ydb-global-directory")
+	. do @routine
 	;
 	; For data written out, if we have the upper case versions used by end users, point to them
 	set:$data(HTTPRSP) *httprsp=HTTPRSP

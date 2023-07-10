@@ -20,6 +20,7 @@ URLMAP ;
 	;;GET test/simtimeout simtimeout^%ydbwebapi
 	;;GET test/simsodiumerr simsodiumerr^%ydbwebapi
 	;;GET test/uppercase uppercase^%ydbwebapi
+	;;GET test/zgbldir globaldir^%ydbwebapi
 	;;zzzzz
 	;
 	; Copyright (c) 2019 Christopher Edwards
