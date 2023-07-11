@@ -898,9 +898,7 @@ tUppercase ; @TEST uppercase HTTP variables
 	quit
 	;
 tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
-	new olddir set olddir=$zdirectory
 	new x
-	set $zdirectory="/tmp/"
 	new gdefile set gdefile="/tmp/mumps.gld"
 	open gdefile:newversion
 	use gdefile
@@ -917,13 +915,38 @@ tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	for i=1:1 read x(i) quit:$zeof
 	close "pipe"
 	;
+	; Normal Test
+	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
+	do eq^%ut(httpStatus,200,1)
+	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/$ydb_gbldir.gld",2)
+	;
+	; Test with sending header
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
 	new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
 	do &libcurl.cleanup
-	do eq^%ut(httpStatus,200)
-	do eq^%ut(return,"/tmp/testdb.gld")
-	set $zdirectory=olddir
+	do eq^%ut(httpStatus,200,3)
+	do eq^%ut(return,"/tmp/testdb.gld^/tmp/testdb.gld",4)
+	;
+	; Normal Test again
+	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
+	do eq^%ut(httpStatus,200,11)
+	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/$ydb_gbldir.gld",12)
+	;
+	; Test two calls, one crashes. Make sure that the original value is restored
+	new httpStatus1,return1
+	new httpStatus2,return2
+	;
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
+	set status=$&libcurl.do(.httpStatus1,.return1,"GET","http://127.0.0.1:55728/test/zgbldir?crash=1")
+	set status=$&libcurl.do(.httpStatus2,.return2,"GET","http://127.0.0.1:55728/test/zgbldir")
+	do eq^%ut(httpStatus1,500,5)
+	do tf^%ut(return1["YDB-E-SETECODE",6)
+	do eq^%ut(httpStatus2,200,7)
+	do eq^%ut(return2,"/data/$ydb_gbldir.gld^/data/$ydb_gbldir.gld",8)
+	do &libcurl.cleanup
+	;
 	quit
 	;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.

@@ -275,8 +275,10 @@ etcode ; error trap when calling out to routines
 	if $tlevel trollback ; abandon any transactions
 	lock                ; release any locks
 	i $data(%webcrash2) s $ec=",U-test-error-trap,"
-	; Set the error information and write it as the HTTP response.
 	if $data(%ydbnull) close %ydbnull
+	; Restore original global direcotry
+	if $data(httpoldgbldir) view "setenv":"ydb_gbldir":httpoldgbldir
+	; Set the error information and write it as the HTTP response.
 	use %ydbtcp
 	new errtxt set errtxt=$zstatus
 	new errarr
