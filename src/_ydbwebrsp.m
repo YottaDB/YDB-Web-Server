@@ -65,7 +65,8 @@ respond ; find entry point to handle request and call it
 	;
 	if '$data(%webjsonerror) do
 	. ; If a custom global directory is supplied, switch to that global directory
-	. if $data(httpreq("header","x-ydb-global-directory")) new $zgbldir set $zgbldir=httpreq("header","x-ydb-global-directory")
+	. if $data(httpreq("header","x-ydb-global-directory")) new $zgbldir set $zgbldir=httpreq("header","x-ydb-global-directory") do
+	.. do:httplog>0 stdout^%ydbwebutils("Using Alternate global directory "_$zgbldir)
 	. do @routine
 	;
 	; For data written out, if we have the upper case versions used by end users, point to them
