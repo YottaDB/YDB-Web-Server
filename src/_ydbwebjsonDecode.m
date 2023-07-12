@@ -14,10 +14,9 @@ direct ; TAG for use by decode^%ydbwebjson
 	; %ydbstack: manages stack of subscripts
 	;  %ydbprop: true if next string is property name, otherwise treat as value
 	;
-	; V4W/DLW - Changed %ydbmax from 4000 to 100, same as in the encoder
-	; With the change to %ydbmax, the following Unit Tests required changes:
-	; splita^%ydbwebjsonDecodeTest, splitb^%ydbwebjsonDecodeTest, long^%ydbwebjsonDecodeTest, maxnum^%ydbwebjsonDecodeTest
-	new %ydbmax set %ydbmax=100 ; limit document lines to 100 characters
+	; limit single JSON node length to 1M characters, otherwise extend over "\"
+	; ... (was 4000, then 100)...
+	new %ydbmax set %ydbmax=2**20
 	set %ydberr=$get(%ydberr,"%ydbwebjsonerr")
 	; If a simple string is passed in, move it to an temp array (%ydbinput)
 	; so that the processing is consistently on an array.

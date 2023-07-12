@@ -79,23 +79,24 @@ splitd ;; @TEST multiple line JSON input with key split
 	quit
 	;
 long ;; @TEST long document that must be saved across extension nodes
+	; This test no longer applies since we try to interpret JSON nodes up to the database limit of 1M.
 	new json,y,err,i,line,ccnt1,ccnt2
 	set json(1)="{""title"":""long document"",""size"":""rather large"",""document"":"""
 	set line="This is a line of text intended to test longer documents.\r\n  It will be repeated so that there are several nodes that must be longer than 4000 kilobytes."
-	for i=2:1:100 set json(i)=line
-	set json(101)="\r\nThis line ends with a control character split over to the next line.\u0"
-	set json(102)="016The last line has a control character.\u001A"
-	set json(103)=""",""author"":""WINDED,LONG""}"
+	for i=2:1:10000 set json(i)=line
+	set json(10001)="\r\nThis line ends with a control character split over to the next line.\u0"
+	set json(10002)="016The last line has a control character.\u001A"
+	set json(10003)=""",""author"":""WINDED,LONG""}"
 	do decode^%ydbwebjson("json","y","err")
 	do eq^%ut(0,$data(err))
-	set ccnt1=0 for i=2:1:102  set ccnt1=ccnt1+$length(json(i))
-	set ccnt2=$length(y("document")) for i=1:1:199 set ccnt2=ccnt2+$length(y("document","\",i))
-	do eq^%ut(210,ccnt1-ccnt2) ; 100 \r\n->$char(13,10), 1 \u001a->$char(26), 1 \u0016->$char(22) = 210 less chars
-	do eq^%ut(59,$length(y("document")))
-	do eq^%ut(94,$length(y("document","\",3)))
-	do eq^%ut(1,y("document","\",198)[$char(22))
-	do eq^%ut($char(26),$extract(y("document","\",199),$length(y("document","\",199))))
-	do eq^%ut(0,$data(y("document",4)))
+	set ccnt1=0 for i=2:1:10002  set ccnt1=ccnt1+$length(json(i))
+	set ccnt2=$length(y("document")) for i=1:1:10 quit:'$data(y("document","\",i))  set ccnt2=ccnt2+$length(y("document","\",i))
+	do eq^%ut(20010,ccnt1-ccnt2) ; 10000 \r\n->$char(13,10), 1 \u001a->$char(26), 1 \u0016->$char(22) = 210 less chars
+	do eq^%ut(1048568,$length(y("document")))
+	do eq^%ut(481389,$length(y("document","\",1)))
+	do eq^%ut(1,y("document","\",1)[$char(22))
+	do eq^%ut($char(26),$extract(y("document","\",1),$length(y("document","\",1))))
+	do eq^%ut(0,$data(y("document",1)))
 	do eq^%ut("WINDED,LONG",y("author"))
 	do eq^%ut("rather large",y("size"))
 	quit
@@ -261,7 +262,7 @@ maxnum ;; @TEST encode large string that looks like number
 	for i=0:1 set x=$zpiece($text(maxnum+(i+1)^%ydbwebjsonTestData1),";;",2,999) quit:x="#####"  set json(i)=x
 	do decode^%ydbwebjson("json","y","err")
 	do eq^%ut(0,$data(err))
-	do eq^%ut(217,$length(y("taskName","\",1)))
+	do eq^%ut(1807,$length(y("taskName")))
 	do encode^%ydbwebjson("y","out","err")
 	do eq^%ut(0,$data(err))
 	do eq^%ut(1,$length(out(1))=93)
