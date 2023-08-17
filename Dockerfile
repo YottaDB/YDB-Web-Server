@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y curl libcurl4-openssl-dev git make cmak
 ENV ydb_dist "/opt/yottadb/current"
 ENV gtm_dist "/opt/yottadb/current"
 ENV ydb_chset "utf-8"
-ENV ydb_xc_libcurl "/opt/yottadb/current/plugin/libcurl_ydb_wrapper.xc"
+ENV ydb_xc_libcurl "/opt/yottadb/current/plugin/libcurl.xc"
 RUN mkdir -p /mwebserver/o /mwebserver/r
 ENV ydb_routines "/mwebserver/o*(/mwebserver/r) /opt/yottadb/current/utf8/libyottadbutil.so /opt/yottadb/current/plugin/o/utf8/_ydbmwebserver.so"
 ENV ydb_icu_version "70"

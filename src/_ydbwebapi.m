@@ -179,10 +179,26 @@ uppercase ; GET /test/uppercase Use upper case variables
 globaldir ; GET /test/zgbldir Test X-YDB-Global-Directory
 	if $get(httpargs("crash"))=1 set $ecode=",USIMERR,"
 	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
-	if $zgbldir'["$ydb_gbldir.gld" set ^x=1 ; This ensures that we actually write to a database (the old value only applies if no database directory has been set-up
+	if $zgbldir'["$ydb_gbldir.gld" set ^x=1 ; This ensures that we actually write to a database (the old value only applies if no database directory has been set-up)
 	set httprsp=$zgbldir_"^"_$ztrnlnm("ydb_gbldir")
 	quit
 	;
+cwd	; GET /test/cwd Test X-YDB-Working-Directory
+	if $get(httpargs("crash"))=1 set $ecode=",USIMERR,"
+	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+	set httprsp=$zdirectory
+	quit
+env	; GET /test/env Test X-YDB-Env-Vars
+	if $get(httpargs("crash"))=1 set $ecode=",USIMERR,"
+	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+	set httprsp=$ztrnlnm("ydb_dir")
+	quit
+gce	; GET /test/gce Test X-YDB-Global-Directory with X-YDB-Working-Directory with X-YDB-Env-Vars
+	if $get(httpargs("crash"))=1 set $ecode=",USIMERR,"
+	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+	set httprsp=$zgbldir_"^"_$zdirectory_"^"_$ztrnlnm("ydb_dir")
+	quit
+	;	
 filesys(argpath) ; Handle reads from File system.
 	; Ensure Directory has a trailing slash
 	; Otherwise a directory like $ydb_dist/plugin/etc/ydbgui is not readable
@@ -191,7 +207,7 @@ filesys(argpath) ; Handle reads from File system.
 	; get the actual path
 	new path set path=httpoptions("directory")_argpath
 	;
-	; GT.M errors out on file no found
+	; GT.M errors out on file not found
 	new $etrap set $etrap="goto filesyse"
 	;
 	; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.

@@ -64,16 +64,37 @@ respond ; find entry point to handle request and call it
 	. if $data(%webjsonerror) do setError^%ydbwebutils("201","JSON Converstion Error",.%webjsonerror)
 	;
 	if '$data(%webjsonerror) do
+	. new httpoldgbldir,httpoldcwd,httpoldenv
+	. ;
 	. ; If a custom global directory is supplied, switch to that global directory
-	. if $data(httpreq("header","x-ydb-global-directory")) do
-	.. new httpoldgbldir set httpoldgbldir=$zgbldir
-	.. new $zgbldir set $zgbldir=httpreq("header","x-ydb-global-directory")
-	.. view "setenv":"ydb_gbldir":$zgbldir
+	. if $data(httpreq("header","x-ydb-global-directory")) set httpoldgbldir=$zgbldir new $zgbldir do
+	.. set $zgbldir=httpreq("header","x-ydb-global-directory")
+	.. view "setenv":"ydb_gbldir":httpreq("header","x-ydb-global-directory")
 	.. do:httplog>0 stdout^%ydbwebutils("Using Alternate global directory "_$zgbldir)
-	.. do @routine
-	.. view "setenv":"ydb_gbldir":httpoldgbldir
-	. else  do
-	.. do @routine
+	. ;
+	. ; if a custom working directory is supplied, switch to that
+	. if $data(httpreq("header","x-ydb-working-directory")) do
+	.. do:httplog>0 stdout^%ydbwebutils("Using Alternate working directory "_$zdirectory)
+	.. set httpoldcwd=$zdirectory
+	.. set $zdirectory=httpreq("header","x-ydb-working-directory")
+	. ;
+	. ; If custom environment variables were requested
+	. if $data(httpreq("header","x-ydb-env-vars")) do
+	.. new i,var for i=1:1:$length(httpreq("header","x-ydb-env-vars"),";") do
+	... set var=$$L^%TRIM($piece(httpreq("header","x-ydb-env-vars"),";",i))
+	... new varname,varvalue
+	... set varname=$piece(var,"=",1)
+	... set varvalue=$piece(var,"=",2)
+	... set httpoldenv(varname)=$ztrnlnm(varname)
+	... do:httplog>0 stdout^%ydbwebutils("Setting Env Var "_varname_"="_varvalue)
+	... view "setenv":varname:varvalue
+	. ;
+	. do @routine
+	. ;
+	. ; Restore the original values
+	. if $data(httpoldgbldir) view "setenv":"ydb_gbldir":httpoldgbldir
+	. if $data(httpoldcwd) set $zdirectory=httpoldcwd
+	. if $data(httpoldenv) new v set v="" for  set v=$order(httpoldenv(v)) quit:v=""  view "setenv":v:httpoldenv(v)
 	;
 	; For data written out, if we have the upper case versions used by end users, point to them
 	set:$data(HTTPRSP) *httprsp=HTTPRSP

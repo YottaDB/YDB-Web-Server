@@ -899,7 +899,7 @@ tUppercase ; @TEST uppercase HTTP variables
 	;
 tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	new x
-	new gdefile set gdefile="/tmp/mumps.gld"
+	new gdefile set gdefile="/tmp/mumps.gde"
 	open gdefile:newversion
 	use gdefile
 	write "change -segment DEFAULT -file=""/tmp/mumps.dat""",!
@@ -914,6 +914,8 @@ tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	use "pipe"
 	for i=1:1 read x(i) quit:$zeof
 	close "pipe"
+	open gdefile
+	close gdefile:delete
 	;
 	; Normal Test
 	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
@@ -947,6 +949,138 @@ tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	do eq^%ut(return2,"/data/$ydb_gbldir.gld^/data/$ydb_gbldir.gld",8)
 	do &libcurl.cleanup
 	;
+	open "/tmp/testdb.gld":readonly
+	close "/tmp/testdb.gld":delete
+	quit
+	;
+tCWD	; @TEST Change $ZDIRECTORY using X-YDB-Working-Directory
+	new httpStatus,return,status
+	;
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/cwd")
+	do eq^%ut(httpStatus,200,1)
+	do eq^%ut(return,"/data/",2)
+	;
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/cwd")
+	do eq^%ut(httpStatus,200,3)
+	do eq^%ut(return,"/tmp/",4)
+	do &libcurl.cleanup
+	;
+	; Normal Test again
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/cwd")
+	do eq^%ut(httpStatus,200,11)
+	do eq^%ut(return,"/data/",22)
+	;
+	; Test two calls, one crashes. Make sure that the original value is restored
+	new httpStatus1,return1
+	new httpStatus2,return2
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
+	set status=$&libcurl.curl(.httpStatus1,.return1,"GET","http://127.0.0.1:55728/test/cwd?crash=1")
+	set status=$&libcurl.curl(.httpStatus2,.return2,"GET","http://127.0.0.1:55728/test/cwd")
+	do eq^%ut(httpStatus1,500,5)
+	do tf^%ut(return1["YDB-E-SETECODE",6)
+	do eq^%ut(httpStatus2,200,7)
+	do eq^%ut(return2,"/data/",8)
+	do &libcurl.cleanup
+	quit
+	;
+tEnv	; @TEST Change environment using X-YDB-Env-Vars
+	new httpStatus,return,status
+	;
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/env")
+	do eq^%ut(httpStatus,200,1)
+	do eq^%ut(return,"",2)
+	;
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/env")
+	do eq^%ut(httpStatus,200,3)
+	do eq^%ut(return,"/foo/",4)
+	do &libcurl.cleanup
+	;
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/env")
+	do eq^%ut(httpStatus,200,11)
+	do eq^%ut(return,"",22)
+	;
+	; Test two calls, one crashes. Make sure that the original value is restored
+	new httpStatus1,return1
+	new httpStatus2,return2
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
+	set status=$&libcurl.curl(.httpStatus1,.return1,"GET","http://127.0.0.1:55728/test/env?crash=1")
+	set status=$&libcurl.curl(.httpStatus2,.return2,"GET","http://127.0.0.1:55728/test/env")
+	do eq^%ut(httpStatus1,500,5)
+	do tf^%ut(return1["YDB-E-SETECODE",6)
+	do eq^%ut(httpStatus2,200,7)
+	do eq^%ut(return2,"",8)
+	do &libcurl.cleanup
+	quit
+	;
+tGCE	; @TEST Change Global, Environment, and Directory together
+	new x
+	new gdefile set gdefile="/tmp/mumps.gde"
+	open gdefile:newversion
+	use gdefile
+	write "change -segment DEFAULT -file=""/tmp/mumps.dat""",!
+	write "exit",!
+	close gdefile
+	open "pipe":(shell="/bin/bash":command="ydb_gbldir=/tmp/testdb.gld $ydb_dist/yottadb -r GDE @"_gdefile)::"pipe"
+	use "pipe"
+	for i=1:1 read x(i) quit:$zeof
+	close "pipe"
+	kill x
+	open "pipe":(shell="/bin/bash":command="ydb_gbldir=/tmp/testdb.gld $ydb_dist/mupip create")::"pipe"
+	use "pipe"
+	for i=1:1 read x(i) quit:$zeof
+	close "pipe"
+	open gdefile
+	close gdefile:delete
+	;
+	new httpStatus,return,status
+	;
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
+	do eq^%ut(httpStatus,200,1)
+	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/^",2)
+	;
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
+	do eq^%ut(httpStatus,200,3)
+	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/^/foo/",4)
+	do &libcurl.cleanup
+	;
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
+	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
+	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
+	do eq^%ut(httpStatus,200,5)
+	do eq^%ut(return,"/tmp/testdb.gld^/tmp/^/foo/",6)
+	do &libcurl.cleanup
+	;
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
+	do eq^%ut(httpStatus,200,11)
+	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/^",22)
+	;
+	; Test two calls, one crashes. Make sure that the original value is restored
+	new httpStatus1,return1
+	new httpStatus2,return2
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
+	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
+	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
+	set status=$&libcurl.curl(.httpStatus1,.return1,"GET","http://127.0.0.1:55728/test/gce?crash=1")
+	set status=$&libcurl.curl(.httpStatus2,.return2,"GET","http://127.0.0.1:55728/test/gce")
+	do eq^%ut(httpStatus1,500,7)
+	do tf^%ut(return1["YDB-E-SETECODE",8)
+	do eq^%ut(httpStatus2,200,9)
+	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/^",10)
+	do &libcurl.cleanup
+	;
+	open "/tmp/testdb.gld":readonly
+	close "/tmp/testdb.gld":delete
 	quit
 	;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
