@@ -6,9 +6,11 @@
 	;
 start(httpoptions) ; set up listening for connections
 start2 ; From the top
+	; Initial trap for parent process
+	set $etrap="use 0 write $zstatus,! zhalt 1"
 	;
 	; Enable CTRL-C
-	use $principal:(ctrap=$zchar(3):exception="use $principal write ""Caught Ctrl-C, stopping..."",! do deletedb^%ydbwebusers($job) halt")
+	use $principal:(ctrap=$zchar(3):exception="use $principal write ""Caught Ctrl-C, stopping..."",! do shutdown^%ydbwebreq($j) halt")
 	;
 	; == Parse Options and Set Default Values
 	do cmdline(.httpoptions)
@@ -91,6 +93,11 @@ start2 ; From the top
 	new cleanupTimeSchedule
 	set cleanupTimeSchedule=$zut
 	;
+	; Job command error file (create copy in case we need to delete it right away before job command creates it)
+	new jobCommandErrorFile set jobCommandErrorFile="/tmp/"_$text(+0)_$job_".mje"
+	open jobCommandErrorFile:newversion
+	close jobCommandErrorFile
+	;
 loop ; wait for connection, spawn process to handle it. GOTO favorite.
 	;
 	; ----- YottaDB CODE ----
@@ -109,9 +116,37 @@ loop ; wait for connection, spawn process to handle it. GOTO favorite.
 	. new q set q=""""
 	. new arg set arg=q_"SOCKET:"_childsock_q
 	. new tcpio ; Don't pass this guy down
-	. new j set j="child:(input="_arg_":output="_arg_":error=""/dev/null"":pass:cmd=""child^%ydbwebreq -p "_httpparentpid_""")"
+	. new $etrap,$estack set $etrap="goto jobError^"_$text(+0)
+	. new j set j="child:(input="_arg_":output="_arg_":error="_q_jobCommandErrorFile_q_":pass:cmd=""child^%ydbwebreq -p "_httpparentpid_""")"
 	. job @j
 	goto loop
+	quit
+	;
+jobError ; $etrap for Job errors
+	;set $zstep="new oio s oio=$io u 0 zp @$zpos b  u oio"
+	;break
+	set $etrap="use 0 write $zstatus,! zhalt 1"
+	new ecode,status
+	set ecode=$ecode
+	set status=$zstatus
+	set $ecode="",$zstatus=""
+	if ecode[",Z150373114," do  ; fork failure command
+	. new oldio set oldio=$io
+	. use $principal write "Job fork error:"_status,!
+	. open jobCommandErrorFile use jobCommandErrorFile
+	. new x read x
+	. close jobCommandErrorFile
+	. write "Job error file contents: "_x,!
+	. use oldio:(attach=childsock)
+	. close oldio:(SOCKET=childsock)
+	. use oldio
+	. hang .1
+	else  do  ; other fatal error
+	. use $principal
+	. write status,!
+	. zhalt 1
+	; This next line will 'unwind' the stack and go back to listening
+	set $etrap="quit:$estack&$quit 0 quit:$estack  set $ecode=""""",$ecode=",U-unwind,"
 	quit
 	;
 tokencleanup ; Clean-up old tokens
@@ -354,7 +389,14 @@ stop(httpoptions) ; tell the listener to stop running
 	. new output read output
 	. use $principal close "mupip"
 	. write output,!
-	. do deletedb^%ydbwebusers(serverProcess)
+	. do shutdown(serverProcess)
+	quit
+	;
+shutdown(job) ; [Private] Cleanup Shutdown
+	do deletedb^%ydbwebusers(job)
+	new jobCommandErrorFile set jobCommandErrorFile="/tmp/"_$text(+0)_job_".mje"
+	open jobCommandErrorFile 
+	close jobCommandErrorFile:delete
 	quit
 	;
 portIsOpen(port,tlsconfig) ; [$$ Private] Check if port is open, if so, return server process
