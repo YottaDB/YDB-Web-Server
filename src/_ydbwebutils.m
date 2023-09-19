@@ -183,8 +183,8 @@ decode64(x) ;
 	quit $extract(z1,1,$length(z1)-$length(x,"=")+1)
 init64() quit "=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 	;
-sstep
-	set $zstep="new oldIO set oldIO=$IO open parentStdout use parentStdout write $justify($zpos,25)_"":""_$text(@$zpos),! use oldIO close parentStdout zstep into"
+sstep	; --log 4 single stepping code
+	set $zstep="new oio x:$io'=parentStdout ""set oio=$IO open parentStdout use parentStdout"" write $justify($zpos,25)_"":""_$text(@$zpos),! x:$d(oio) ""use oio close parentStdout"" zstep into"
 	zbreak sstep+3:"zstep into"
 	new oldIO set oldIO=$IO
 	open parentStdout use parentStdout
