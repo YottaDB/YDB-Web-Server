@@ -25,6 +25,7 @@ start2 ; From the top
 	if '$data(httpoptions("gzip"))          set httpoptions("gzip")=0                       ; --gzip
 	if '$data(httpoptions("readwrite"))     set httpoptions("readwrite")=0                  ; --readwrite
 	if '$data(httpoptions("directory"))     set httpoptions("directory")=$zdirectory        ; --directory /x/y/z
+	if '$data(httpoptions("ws-port"))       set httpoptions("ws-port")=0			; --ws-port nnnnn
 	;
 	; Authentication/Authorization Options
 	if '$data(httpoptions("auth-stdin"))    set httpoptions("auth-stdin")=0                 ; --auth-stdin
@@ -39,7 +40,7 @@ start2 ; From the top
 	;
 	new parentStdout set parentStdout="/proc/"_$job_"/fd/1" ; STDOUT for the parent process (to use for logging to STDOUT)
 	new parentStdoutAvailable set parentStdoutAvailable=$$stdoutavail^%ydbwebutils(parentStdout) ; Is it available? (boolean)
-	if httplog>3 do sstep^%ydbwebutils ; --log 4 will print each line as it's executed - experimental ... some bugs still in it.
+	if httplog>3 do sstep^%ydbwebutils ; --log 4 will print each line as it's executed
 	; 
 	; Set-up Authentication global variables
 	if (httpoptions("auth-stdin"))!(httpoptions("auth-file")'="") set httphasusers=1
@@ -72,6 +73,7 @@ start2 ; From the top
 	write:httphasusers "using authentication "
 	write:httpoptions("gzip") "enabling gzip "
 	write:httpreadwrite "in readwrite mode "
+	write:httpoptions("ws-port") "using port "_httpoptions("ws-port")_" for web sockets "
 	write !
 	if httplog,'parentStdoutAvailable write "Logging will be disabled as "_parentStdout_" is not writable",!
 	;
@@ -450,7 +452,7 @@ cmdline(httpoptions) ; [Private] Process command line httpoptions
 	do trimleadingstr^%XCMD(.cmdline," ")
 	if cmdline="" quit
 	for  quit:'$$trimleadingstr^%XCMD(.cmdline,"--")  do ; process httpoptions
-	. new o for o="port","log","tlsconfig","directory","token-timeout","auth-file","debug" do
+	. new o for o="port","log","tlsconfig","directory","token-timeout","auth-file","debug","ws-port" do
 	.. if $$trimleadingstr^%XCMD(.cmdline,o) do  quit
 	... set httpoptions(o)=$$trimleadingdelimstr^%XCMD(.cmdline)
 	... do trimleadingstr^%XCMD(.cmdline," ")

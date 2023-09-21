@@ -198,6 +198,11 @@ gce	; GET /test/gce Test X-YDB-Global-Directory with X-YDB-Working-Directory wit
 	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
 	set httprsp=$zgbldir_"^"_$zdirectory_"^"_$ztrnlnm("ydb_dir")
 	quit
+	;
+wsport ; GET /test/ws-port Tests --ws-port parameter
+	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+	set httprsp=httpoptions("ws-port")
+	quit
 	;	
 filesys(argpath) ; Handle reads from File system.
 	; Ensure Directory has a trailing slash

@@ -77,11 +77,14 @@ A full list of the options accepted is as follows:
   implementation. Note that due to the design of the YottaDB TLS plug-in code,
   you need to specify different values for `--tlsconfig`: to start look for a server
   entry, and stop look for a client entry.
-* `--token-timeout n`. Time out tokens (when using either of the auth options)
+* `--token-timeout n` Time out tokens (when using either of the auth options)
   even n seconds. If n is 0, then tokens are not timed out.
 * `--readwrite` An application level flag to indicate that an application is
   readwrite. The flag does not change any of the behavior of the web server
-  itself.
+  itself. Available in variable `httpreadwrite`.
+* `--ws-port nnnnn` An application level flag to tell the application where
+  a web socket server will be located. This server itself does not implement
+  web sockets. Available in variable `httpoptions("ws-port")`.
 
 For user set-up, see [doc/auth-auth.md](doc/auth-auth.md).
 
@@ -94,4 +97,4 @@ automatically with the system, see [doc/systemd.md](doc/systemd.md).
 See the [doc](doc) folder.
 
 # Testing Documentation
-There are extensive [unit tests](doc/testing.md) with coverage.
+There are extensive [unit tests](doc/testing.md).

@@ -1083,6 +1083,29 @@ tGCE	; @TEST Change Global, Environment, and Directory together
 	close "/tmp/testdb.gld":delete
 	quit
 	;
+twsport ; @TEST Test --ws-port flag
+	new httpStatus,return
+	;
+	; Default port is zero
+	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/ws-port")
+	do eq^%ut(httpStatus,200,1)
+	do eq^%ut(return,0,2)
+	;
+	; Now start a webserver with read/write
+	job start^%ydbwebreq:cmd="job --port 55730 --ws-port 55731"
+	hang .1
+	new server set server=$zjob
+	; 
+	; Get new port
+	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/ws-port")
+	do eq^%ut(httpStatus,200,3)
+	do eq^%ut(return,55731,4)
+	;
+	; now stop the webserver
+	do stop(server)
+	quit
+	;
+	;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
 	new options set options("port")=55728
 	do stop^%ydbwebreq(.options)

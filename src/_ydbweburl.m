@@ -24,6 +24,7 @@ URLMAP ;
 	;;GET test/cwd cwd^%ydbwebapi
 	;;GET test/env env^%ydbwebapi
 	;;GET test/gce gce^%ydbwebapi
+	;;GET test/ws-port wsport^%ydbwebapi
 	;;zzzzz
 	;
 	; Copyright (c) 2019 Christopher Edwards
