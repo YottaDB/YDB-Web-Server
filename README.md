@@ -86,15 +86,4 @@ A full list of the options accepted is as follows:
   a web socket server will be located. This server itself does not implement
   web sockets. Available in variable `httpoptions("ws-port")`.
 
-For user set-up, see [doc/auth-auth.md](doc/auth-auth.md).
-
-To set-up TLS, see [doc/tls-setup.md](doc/tls-setup.md).
-
-To set-up the Web Server as a `systemd` service so that it will start and stop
-automatically with the system, see [doc/systemd.md](doc/systemd.md).
-
-# Developer Documentation
-See the [doc](doc) folder.
-
-# Testing Documentation
-There are extensive [unit tests](doc/testing.md).
+Full documentation is located [here](https://docs.yottadb.com/Plugins/ydbwebserver.html).
