@@ -14,7 +14,6 @@
 
 # Prelim
 cmake_minimum_required(VERSION 3.14)
-include(ExternalProject)
 include(FetchContent)
 
 # The tag is at the time of writing the latest tag in YDBCMake.
@@ -28,21 +27,27 @@ FetchContent_MakeAvailable(YDBCMake)
 message(STATUS "YDBCMake Source Directory: ${ydbcmake_SOURCE_DIR}")
 set(CMAKE_MODULE_PATH "${ydbcmake_SOURCE_DIR}/ydbcmake/")
 
-find_package(PkgConfig QUIET)
-if (PKG_CONFIG_FOUND)
-	enable_language(C)
-	pkg_check_modules(sodium_PKG QUIET libsodium)
-	if (sodium_PKG_FOUND)
-		FetchContent_Declare(YDBsodium
-			GIT_REPOSITORY	https://gitlab.com/YottaDB/Util/YDBsodium.git
-			GIT_TAG		master
-		)
-		FetchContent_MakeAvailable(YDBsodium)
-		message(STATUS "YDBsodium Source Directory: ${ydbsodium_SOURCE_DIR}")
+if(EXISTS "${YOTTADB_INCLUDE_DIRS}/plugin/libsodium.so")
+	set(sodium_ALREADY_INSTALLED TRUE)
+else()
+	find_package(PkgConfig QUIET)
+	if (PKG_CONFIG_FOUND)
+		enable_language(C)
+		pkg_check_modules(sodium_PKG QUIET libsodium)
+		if (sodium_PKG_FOUND)
+			FetchContent_Declare(YDBsodium
+				GIT_REPOSITORY	https://gitlab.com/YottaDB/Util/YDBsodium.git
+				GIT_TAG		master
+			)
+			FetchContent_MakeAvailable(YDBsodium)
+			message(STATUS "YDBsodium Source Directory: ${ydbsodium_SOURCE_DIR}")
+		endif()
 	endif()
 endif()
 
-if(NOT PKG_CONFIG_FOUND OR NOT sodium_PKG_FOUND)
+if(sodium_ALREADY_INSTALLED)
+	message(STATUS "libsodium already installed. Usernames/passwords will be available.")
+elseif(NOT PKG_CONFIG_FOUND OR NOT sodium_PKG_FOUND)
 	message(STATUS "Could not find libsodium. Cannot use usernames/passwords.")
 else()
 	message(STATUS "Installing libsodium YottaDB plugin. Usernames/passwords will be available.")
@@ -56,7 +61,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 project(YDBWebServer
 	LANGUAGES M
-	VERSION 4.3.0)
+	VERSION 4.3.1)
 find_package(YOTTADB REQUIRED)
 
 configure_file(src/_ydbwebversion.m.in src/_ydbwebversion.m @ONLY)
