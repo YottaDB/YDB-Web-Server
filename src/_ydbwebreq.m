@@ -26,6 +26,7 @@ start2 ; From the top
 	if '$data(httpoptions("readwrite"))     set httpoptions("readwrite")=0                  ; --readwrite
 	if '$data(httpoptions("directory"))     set httpoptions("directory")=$zdirectory        ; --directory /x/y/z
 	if '$data(httpoptions("ws-port"))       set httpoptions("ws-port")=0			; --ws-port nnnnn
+	if '$data(httpoptions("client-config")) set httpoptions("client-config")=""             ; --client-config /x/y/z
 	;
 	; Authentication/Authorization Options
 	if '$data(httpoptions("auth-stdin"))    set httpoptions("auth-stdin")=0                 ; --auth-stdin
@@ -74,6 +75,7 @@ start2 ; From the top
 	write:httpoptions("gzip") "enabling gzip "
 	write:httpreadwrite "in readwrite mode "
 	write:httpoptions("ws-port") "using port "_httpoptions("ws-port")_" for web sockets "
+	write:$zlength(httpoptions("client-config")) "with client-config "_httpoptions("client-config")_" "
 	write !
 	if httplog,'parentStdoutAvailable write "Logging will be disabled as "_parentStdout_" is not writable",!
 	;
@@ -452,7 +454,7 @@ cmdline(httpoptions) ; [Private] Process command line httpoptions
 	do trimleadingstr^%XCMD(.cmdline," ")
 	if cmdline="" quit
 	for  quit:'$$trimleadingstr^%XCMD(.cmdline,"--")  do ; process httpoptions
-	. new o for o="port","log","tlsconfig","directory","token-timeout","auth-file","debug","ws-port" do
+	. new o for o="port","log","tlsconfig","directory","token-timeout","auth-file","debug","ws-port","client-config" do
 	.. if $$trimleadingstr^%XCMD(.cmdline,o) do  quit
 	... set httpoptions(o)=$$trimleadingdelimstr^%XCMD(.cmdline)
 	... do trimleadingstr^%XCMD(.cmdline," ")

@@ -85,5 +85,9 @@ A full list of the options accepted is as follows:
 * `--ws-port nnnnn` An application level flag to tell the application where
   a web socket server will be located. This server itself does not implement
   web sockets. Available in variable `httpoptions("ws-port")`.
+* `--client-config /x/y/z` An application level flag to tell the application
+  where a client configuration file is located on the file system. The server
+  itself does not use this. Available in variable
+  `httpoptions("client-config")`.
 
 Full documentation is located [here](https://docs.yottadb.com/Plugins/ydbwebserver.html).
