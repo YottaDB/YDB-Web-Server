@@ -35,9 +35,11 @@ createTempDB(ppid) ; [$$] Create a temporary database - returns global directory
 	do:httplog>0 stdout^%ydbwebutils("                        - database file   : "_dbfile)
 	quit gld
 	;
-deletedb(ppid) ; [Private] Delete database files
+deletedb(ppid,silent) ; [Private] Delete database files
 	; ppid = parent process id
-	use $principal write "Deleting tokens database files (if present)",!
+	; silent (optional) = don't write
+	set silent=$get(silent)
+	if 'silent use $principal write "Deleting tokens database files (if present)",!
 	new tmp set tmp=$$tmp()
 	open tmp_"/ydbgui"_ppid_".dat":(readonly:exception="goto deletedb1")
 	close tmp_"/ydbgui"_ppid_".dat":delete
@@ -233,7 +235,7 @@ tokenCleanup
 	quit
 	;
 	;
-	; Copyright (c) 2023 YottaDB LLC
+	; Copyright (c) 2023-2024 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.

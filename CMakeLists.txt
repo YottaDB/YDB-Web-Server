@@ -1,4 +1,4 @@
-#   Copyright (c) 2022-2023 YottaDB LLC
+#   Copyright (c) 2022-2024 YottaDB LLC
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 project(YDBWebServer
 	LANGUAGES M
-	VERSION 4.4.0)
+	VERSION 4.4.1)
 find_package(YOTTADB REQUIRED)
 
 configure_file(src/_ydbwebversion.m.in src/_ydbwebversion.m @ONLY)

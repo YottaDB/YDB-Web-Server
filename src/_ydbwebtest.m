@@ -36,6 +36,7 @@ stop(pid)
 	use "p" read x:1
 	close "p"
 	do eq^%ut($ZCLOSE,0)
+	do shutdown^%ydbwebreq(pid,1) ; Remove db and job files
 	for  quit:'$zgetjpi(pid,"isprocalive")  hang .001
 	quit
 	;
@@ -1105,6 +1106,28 @@ twsport ; @TEST Test --ws-port flag
 	do stop(server)
 	quit
 	;
+mjeloc	; @TEST Test that mje files are in $ydb_tmp and not in /tmp/
+	zsystem "mkdir -p /data/tmp/"
+	; Using this instead of ydb_tmp to show that it works
+	; No seperate test for ydb_tmp as the source code uses ydb_tmp; this tests both
+	view "setenv":"gtm_tmp":"/data/tmp/"
+	job start^%ydbwebreq:cmd="job --port 55730"
+	hang .1
+	new server set server=$zjob
+	do tf^%ut($zsearch("/data/tmp/%ydbwebreq"_server_".mje")'="",1)
+	do tf^%ut($zsearch("/tmp/%ydbwebreq"_server_".mje")="",2)
+	do stop(server)
+	;
+	view "unsetenv":"gtm_tmp"
+	job start^%ydbwebreq:cmd="job --port 55730"
+	hang .1
+	new server set server=$zjob
+	do tf^%ut($zsearch("/data/tmp/%ydbwebreq"_server_".mje")="",3)
+	do tf^%ut($zsearch("/tmp/%ydbwebreq"_server_".mje")'="",4)
+	do stop(server)
+	zsystem "rm -r /data/tmp/"
+	;
+	quit
 	;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
 	new options set options("port")=55728
@@ -1121,7 +1144,7 @@ EOR ;
 	;
 	; Copyright (c) 2018-2020 Sam Habiel
 	; Copyright (c) 2019 Christopher Edwards
-	; Copyright (c) 2022-2023 YottaDB LLC
+	; Copyright (c) 2022-2024 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.

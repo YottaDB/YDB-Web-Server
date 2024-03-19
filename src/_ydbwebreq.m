@@ -98,7 +98,7 @@ start2 ; From the top
 	set cleanupTimeSchedule=$zut
 	;
 	; Job command error file (create copy in case we need to delete it right away before job command creates it)
-	new jobCommandErrorFile set jobCommandErrorFile="/tmp/"_$text(+0)_$job_".mje"
+	new jobCommandErrorFile set jobCommandErrorFile=$$jobCommandErrorFile()
 	open jobCommandErrorFile:newversion
 	close jobCommandErrorFile
 	;
@@ -396,9 +396,9 @@ stop(httpoptions) ; tell the listener to stop running
 	. do shutdown(serverProcess)
 	quit
 	;
-shutdown(job) ; [Private] Cleanup Shutdown
-	do deletedb^%ydbwebusers(job)
-	new jobCommandErrorFile set jobCommandErrorFile="/tmp/"_$text(+0)_job_".mje"
+shutdown(job,silent) ; [Private] Cleanup Shutdown
+	do deletedb^%ydbwebusers(job,$get(silent))
+	new jobCommandErrorFile set jobCommandErrorFile=$$jobCommandErrorFile()
 	open jobCommandErrorFile 
 	close jobCommandErrorFile:delete
 	quit
@@ -464,10 +464,15 @@ cmdline(httpoptions) ; [Private] Process command line httpoptions
 	.. do trimleadingstr^%XCMD(.cmdline," ")
 	quit
 	;
+jobCommandErrorFile() ; [$$ Private] Get job command error file
+	; compute path and filename for log files
+	new tmp set tmp=$zsearch("$ydb_tmp")
+	quit $select($zlength(tmp):tmp,1:"/tmp")_"/"_$text(+0)_$job_".mje"
+	;
 	; Portions of this code are public domain, but it was extensively modified
 	; Copyright (c) 2013-2019 Sam Habiel
 	; Copyright (c) 2018-2019 Christopher Edwards
-	; Copyright (c) 2022-2023 YottaDB LLC
+	; Copyright (c) 2022-2024 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.
