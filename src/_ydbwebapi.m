@@ -62,6 +62,12 @@ gloreturn2 ; GET /test/gloreturn2 - Used by Unit Tests to ensure $query works on
 	set httprsp("mime")="text/plain; charset=utf-8" ; type of data to send browser
 	quit
 	;
+gloreturn3 ; GET /test/gloreturn3 - Used by Unit Tests to ensure a single global is killed
+	set httprsp=$name(^web3)
+	set @httprsp="foo"_$char(13,10)
+	set httprsp("mime")="text/plain; charset=utf-8" ; type of data to send browser
+	quit
+	;
 utf8get ; GET /test/utf8/get
 	set httprsp=httpargs("foo")
 	set httprsp("mime")="text/plain; charset=UTF-8"
@@ -154,6 +160,102 @@ posttest ; POST /test/post Simple test for post
 	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
 	set httprsp="/path/"_httpreq("json","random")_"/1" ; Stored URL
 	set httploc=httprsp
+	quit
+	;
+chunkedpost ; POST /test/postchunked Test for Chunked data
+	; returns length of body and number of nodes that we stored the data in
+	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+	new l set l=0
+	new i for i=0:0 set i=$order(httpreq("body",i)) quit:'i  set l=l+$zlength(httpreq("body",i))
+	new last set last=$order(httpreq("body",""),-1)
+	set httprsp=l_"^"_+last
+	quit
+	;
+chunkedpostincread ; Incremental read of each chunk
+	new l set l=0
+	new i for i=0:0 set i=$order(httpreq("body",i)) quit:'i  set l=l+$zlength(httpreq("body",i))
+	new last set last=$order(httpreq("body",""),-1)
+	set chunkedread($i(chunkedread))=l_"^"_+last
+	quit
+	;
+chunkedpostinc ; POST /text/postchunkedinc Incremental Read Chunk Test
+	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+	new i for i=0:0 set i=$order(chunkedread(i)) quit:'i  set httprsp(i)=chunkedread(i)_$char(13,10)
+	quit	
+	;
+chunkedget ; GET /test/getchunked Test for Chunked data
+	set data1="data1"
+	set data2="data2"_$char(13,10)
+	set ^data3="global_data3"
+	set ^data4="global_data4"_$char(13,10)
+	set ^data5="global_multiple_nodes_query: "
+	set ^data5(1)="subnode1"
+	set ^data5(2)="subnode2"
+	set ^data5(3)=$char(13,10)
+	set ^data6("foo",1)="global_sequential_nodes_query: "
+	set ^data6("foo",2)="subnode1"
+	set ^data6("foo",3)="subnode2"
+	set ^data6("foo",4)=$char(13,10)
+	set ^data6("goo")="SHOULD NOT BE SENT"_$char(13,10)
+	set ^data9="End of Transmission"_$char(13,10)
+	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+	set httprsp("chunked",1)=$name(data1)
+	set httprsp("chunked",2)=$name(data2)
+	set httprsp("chunked",3)=$name(^data3)
+	set httprsp("chunked",4)=$name(^data4)
+	set httprsp("chunked",5)=$name(^data5)
+	set httprsp("chunked",6)=$name(^data6("foo"))
+	set httprsp("chunked",7)="chunkcallback1^"_$text(+0)
+	set httprsp("chunked",8)="chunkcallback2^"_$text(+0)
+	set httprsp("chunked",9)=$name(^data9)
+	quit
+	;
+chunkcallback1 ; Test Callback for the writing a single large chunk
+	new oldio set oldio=$io
+	; This file was chosen for testing as that exercises flush^%ydbwebrsp because it's larger than 32k
+	new file set file="/mwebserver/r/_ydbwebtest.m"
+	; Get file size
+	open "D":(shell="/bin/sh":command="stat -c%s "_file:parse):0:"pipe"
+	use "D"
+	new size read size
+	use oldio close "D"
+	;
+	; Send hex size
+	do:httplog>2 stdout^%ydbwebutils("Sending chunk with size "_size)
+	new hexsize set hexsize=$$dec2hex^%ydbwebutils(size)
+	do w^%ydbwebrsp(hexsize_$char(13,10))
+	;
+	; read and send file
+	; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
+	open file:(rewind:readonly:fixed:chset="M")
+	use file
+	; hang simulates that we are sending lots of data slowly
+	new x for  read x#4079:0 use oldio do w^%ydbwebrsp(x) hang .01 use file quit:$zeof
+	use oldio close file
+	; now send end of this chunk (CRLF)
+	do w^%ydbwebrsp($char(13,10))
+	quit
+	;
+chunkcallback2 ; Test Callback for writing multiple small chunks
+	new oldio set oldio=$io
+	; This file was chosen for testing as that exercises flush^%ydbwebrsp because it's larger than 32k
+	new file set file="/mwebserver/r/_ydbwebtest.m"
+	;
+	; Get file size (for verifying that we sent the full file)
+	open "D":(shell="/bin/sh":command="stat -c%s "_file:parse):0:"pipe"
+	use "D"
+	new fullsize read fullsize
+	use oldio close "D"
+	;
+	; read and send file in chunks
+	; Fixed prevents Reads to terminators on SD's. CHSET makes sure we don't analyze UTF.
+	open file:(rewind:readonly:fixed:chset="M":nowrap)
+	use file
+	new incsize,size set incsize=0
+	new x for  read x#4079:0 quit:$zeof  set size=$$sendonechunk^%ydbwebrsp(x),incsize=incsize+size
+	use oldio close file
+	do:httplog>2 stdout^%ydbwebutils("full size: "_fullsize_" sent size: "_incsize)
+	if fullsize'=incsize set $ecode=",U-signal-error,"
 	quit
 	;
 readwritetest ; GET /test/readwrite Tests readwrite flag

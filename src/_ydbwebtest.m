@@ -29,7 +29,7 @@ SHUTDOWN ;
 	quit
 	;
 	; -------------------
-	; Helper methods to stop the server at specifc ports in the tests
+	; Helper method to stop the server at specifc ports in the tests
 	;
 stop(pid)
 	open "p":(command="$gtm_dist/mupip stop "_pid)::"pipe"
@@ -40,6 +40,20 @@ stop(pid)
 	for  quit:'$zgetjpi(pid,"isprocalive")  hang .001
 	quit
 	;
+	; Helper method to uncompress gzipped data
+uncompress(zipped)
+	view "nobadchar"
+	new uncompressed,out,i
+	set uncompressed=""
+	open "pipe":(shell="/bin/bash":command="gunzip":chset="M")::"pipe"
+	use "pipe" write zipped
+	set $x=0 write /eof
+	for i=1:1 read out(i) quit:$zeof
+	close "pipe"
+	view "badchar"
+	for i=0:0 set i=$order(out(i)) quit:'i  set out(i)=out(i)_$char(10),uncompressed=uncompressed_out(i)
+	quit uncompressed
+	;	
 tstartagain ; @TEST Start again on the same port
 	job start^%ydbwebreq:cmd="job --port 55728"
 	set myJob=$zjob
@@ -151,12 +165,29 @@ tgzip ; @TEST Test gzip encoding
 	do &libcurl.init
 	do &libcurl.addHeader("Accept-Encoding: gzip")
 	new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55732/test/r/%25ydbwebapi",,,1,.headers)
+	do &libcurl.cleanup
 	do eq^%ut(httpStatus,200)
 	do tf^%ut(headers["Content-Encoding: gzip")
 	view "nobadchar"
 	do tf^%ut(return[$char(0))
 	view "badchar"
-
+	new uncompressed set uncompressed=$$uncompress(return)
+	do tf^%ut(uncompressed["%ydbwebapi")
+	;
+	; Do this again, but routine is larger than 32k
+	do &libcurl.init
+	do &libcurl.addHeader("Accept-Encoding: gzip")
+	new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55732/test/r/%25ydbwebtest",,,1,.headers)
+	do &libcurl.cleanup
+	do eq^%ut(httpStatus,200)
+	do tf^%ut(headers["Content-Encoding: gzip")
+	view "nobadchar"
+	do tf^%ut(return[$char(0))
+	view "badchar"
+	do &libcurl.cleanup
+	new uncompressed set uncompressed=$$uncompress(return)
+	do tf^%ut(uncompressed["%ydbwebtest")
+	;
 	; now stop the webserver again
 	do stop(gzipflagjob)
 	quit
@@ -223,7 +254,7 @@ tlong ; @TEST get a long message
 	do eq^%ut($length(return),32769)
 	quit
 	;
-tGlo    ; @TEST global tests 
+tGlo    ; @TEST global tests
 	; Create global directory
 	new x
 	new gdefile set gdefile="/tmp/mumps.gde"
@@ -243,37 +274,67 @@ tGlo    ; @TEST global tests
 	close "pipe"
 	open gdefile
 	close gdefile:delete
-
+	;
 	set $zgbldir="/tmp/testdb.gld"
-	job start^%ydbwebreq:cmd="job --port 55730"
-	hang .1
-	new server set server=$zjob
+	view "gbldirload":$zgbldir
 	;
-	; Get data from global, and ensure that global is killed after data is sent
-	new httpStatus,return
-	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gloreturn1")
-	do eq^%ut(httpStatus,200,1)
-	do tf^%ut(return["coo",2)
-	do tf^%ut('$d(^web("%ydbwebapi")),3)
+	; We run the global tests twice: once without gzip and once with gzip
+	; This is to verify that the logic for doing gzipping does not interfere with the data sending
+	for i=1,2 do
+	. if i=1 job start^%ydbwebreq:cmd="job --port 55730"
+	. if i=2 job start^%ydbwebreq:cmd="job --port 55730 --gzip"
+	. hang .1
+	. new server set server=$zjob
+	. ;
+	. ; Get data from global, and ensure that global is killed after data is sent
+	. new httpStatus,return,headers
+	. do &libcurl.init
+	. if i=2 do &libcurl.addHeader("Accept-Encoding: gzip")
+	. new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gloreturn1",,,1,.headers)
+	. do &libcurl.cleanup
+	. do eq^%ut(httpStatus,200,1*i)
+	. if i=2 set return=$$uncompress(return)
+	. if i=2 do tf^%ut(headers["Content-Encoding: gzip")
+	. do tf^%ut(return["coo",2*i)
+	. do tf^%ut('$data(^web("%ydbwebapi")),3*i)
+	. ;
+	. ; #139: $query on a subscript does not terminate properly, continuing to send unrelated data
+	. ; In this test, we have to use command line curl as the plugin doesn't support --ignore-content-length,
+	. ; ... which is necessary to reproduce this bug
+	. if i=1 open "p":(shell="/bin/sh":command="curl -sS --ignore-content-length http://127.0.0.1:55730/test/gloreturn1")::"pipe"
+	. if i=2 open "p":(shell="/bin/sh":command="curl -sS --compressed --ignore-content-length http://127.0.0.1:55730/test/gloreturn1")::"pipe"
+	. use "p"
+	. n j for j=1:1 read x(j) quit:$zeof
+	. close "p"
+	. do tf^%ut(x(4)'["WRONG DATA",4*i)
+	. do tf^%ut($data(^web1("z")),5*i) ; should not be deleted
+	. ;
+	. ; Test gloreturn2, which uses an unsubscripted global. This tests $query termination on an empty string.
+	. new httpStatus,return
+	. do &libcurl.init
+	. if i=2 do &libcurl.addHeader("Accept-Encoding: gzip")
+	. new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gloreturn2")
+	. do &libcurl.cleanup
+	. if i=2 set return=$$uncompress(return)
+	. if i=2 do tf^%ut(headers["Content-Encoding: gzip")
+	. do eq^%ut(httpStatus,200,6*i)
+	. do tf^%ut(return["coo",7*i)
+	. do tf^%ut('$data(^web2),8*i)
+	. ;
+	. ; Test gloreturn3, which uses an unsubscripted global. This tests $query termination on an empty string.
+	. new httpStatus,return
+	. do &libcurl.init
+	. if i=2 do &libcurl.addHeader("Accept-Encoding: gzip")
+	. new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gloreturn3")
+	. do &libcurl.cleanup
+	. if i=2 set return=$$uncompress(return)
+	. if i=2 do tf^%ut(headers["Content-Encoding: gzip")
+	. do eq^%ut(httpStatus,200,9*i)
+	. do tf^%ut(return["foo",10*i)
+	. do tf^%ut('$data(^web3),11*i)
+	. ;
+	. do stop(server)
 	;
-	; #139: $query on a subscript does not terminate properly, continuing to send unrelated data
-	; In this test, we have to use command line curl as the plugin doesn't support --ignore-content-length,
-	; ... which is necessary to reproduce this bug
-	open "p":(shell="/bin/sh":command="curl -sS --ignore-content-length http://127.0.0.1:55730/test/gloreturn1")::"pipe"
-	use "p"
-	for i=1:1 read x(i) quit:$zeof
-	close "p"
-	do tf^%ut(x(4)'["WRONG DATA",4)
-	do tf^%ut($d(^web1("z")),5) ; should not be deleted
-	;
-	; Test gloreturn2, which uses an unsubscripted global. This tests $query termination on an empty string.
-	new httpStatus,return
-	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gloreturn2")
-	do eq^%ut(httpStatus,200,6)
-	do tf^%ut(return["coo",7)
-	do tf^%ut('$d(^web2))
-	;
-	do stop(server)
 	set $zgbldir=""
 	view "unsetenv":"ydb_gbldir"
 	open "/tmp/testdb.gld" close "/tmp/testdb.gld":delete
@@ -1175,6 +1236,119 @@ mjeloc	; @TEST Test that mje files are in $ydb_tmp and not in /tmp/
 	do stop(server)
 	zsystem "rm -r /data/tmp/"
 	;
+	quit
+	;
+tRecChuncked ; @TEST Receive chunked data
+	; like curl -vvv -H "Transfer-Encoding: chunked" --data-binary @./wwwroot/test/mockData.js localhost:9080/test/postchunked
+	new httpStatus0,return0
+	new httpStatus1,return1
+	new httpStatus2,return2
+	new payload0,payload1,payload2
+	; Curl segments chuncked segemnts at 64 k. So we need to test no data, 1 chunk and 2 chunks
+	set payload0=""
+	set $zpiece(payload1,"a",49999)="bb" ; one chunk = 50000 characters
+	set $zpiece(payload2,"c",99999)="dd" ; two chunks = 100000 characters
+	do &libcurl.init
+	do &libcurl.addHeader("Transfer-Encoding: chunked")
+	do &libcurl.do(.httpStatus0,.return0,"POST","http://127.0.0.1:55728/test/postchunked",payload0,"application/text",1,.headers)
+	do &libcurl.addHeader("Transfer-Encoding: chunked")
+	do &libcurl.do(.httpStatus1,.return1,"POST","http://127.0.0.1:55728/test/postchunked",payload1,"application/text",1,.headers)
+	do &libcurl.addHeader("Transfer-Encoding: chunked")
+	do &libcurl.do(.httpStatus2,.return2,"POST","http://127.0.0.1:55728/test/postchunked",payload2,"application/text",1,.headers)
+	do &libcurl.cleanup
+	do eq^%ut(httpStatus0,200)
+	do eq^%ut(httpStatus1,200)
+	do eq^%ut(httpStatus2,200)
+	do eq^%ut(return0,"0^0")
+	do eq^%ut(return1,"50000^13")
+	do eq^%ut(return2,"100000^26")
+	quit
+	;
+tRecChunckedInc ; @TEST Received chunked data incrementally
+	new httpStatus,return,payload
+	set $zpiece(payload,"a",2**20)="a" ; 1MB
+	do &libcurl.init
+	do &libcurl.addHeader("Transfer-Encoding: chunked")
+	do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/test/postchunkedinc",payload,"application/text",1,.headers)
+	do &libcurl.cleanup
+	do eq^%ut(httpStatus,200)
+	; 17 chunks processed
+	do tf^%ut($zl(return,$char(13,10)),17)
+	quit
+	;
+	;
+tExpect ; @TEST Test that 100-Expect is sent correctly.
+	; Cannot do this using libcurl plugin, as we need to post more than 1 MB
+	new x,i,a
+	set $zpiece(a,"a",2**20)="a" ; 1MB
+	open "2mbfile.txt":newversion
+	use "2mbfile.txt"
+	write a,!,a,!
+	open "p":(shell="/bin/sh":command="curl -vvv --header 'Transfer-Encoding: chunked' http://localhost:55728/test/postchunkedinc -d @2mbfile.txt")::"pipe"
+	use "p"
+	for i=1:1 read x(i) quit:$zeof
+	close "p"
+	new foundexpect set foundexpect=0
+	for i=0:0 set i=$order(x(i)) quit:'i  if x(i)["HTTP/1.1 100 Continue" set foundexpect=1 quit
+	do tf^%ut(foundexpect)
+	quit
+	;
+tSendChunked ; @TEST Send chunked data
+	; Create global directory as we use globals in this test
+	new x
+	new gdefile set gdefile="/tmp/mumps.gde"
+	open gdefile:newversion
+	use gdefile
+	write "change -segment DEFAULT -file=""/tmp/mumps.dat""",!
+	write "exit",!
+	close gdefile
+	open "pipe":(shell="/bin/bash":command="ydb_gbldir=/tmp/testdb.gld $ydb_dist/yottadb -r GDE @"_gdefile)::"pipe"
+	use "pipe"
+	for i=1:1 read x(i) quit:$zeof
+	close "pipe"
+	kill x
+	open "pipe":(shell="/bin/bash":command="ydb_gbldir=/tmp/testdb.gld $ydb_dist/mupip create")::"pipe"
+	use "pipe"
+	for i=1:1 read x(i) quit:$zeof
+	close "pipe"
+	open gdefile
+	close gdefile:delete
+
+	set $zgbldir="/tmp/testdb.gld"
+	view "setenv":"ydb_gbldir":$zgbldir
+	view "gbldirload":$zgbldir
+	;
+	job start^%ydbwebreq:cmd="job --port 55730"
+	hang .1
+	new server set server=$zjob
+	new httpStatus,return
+	do &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/getchunked")
+	do eq^%ut(httpStatus,200,1)
+	do tf^%ut(return[($char(13,10)_"global_sequential_nodes_query: subnode1subnode2"_$char(13,10)),2)
+	do tf^%ut(return[($char(10)_"End of Transmission"_$char(13,10)),3)
+	do tf^%ut(return'[($char(13,10)_"SHOULD NOT BE SENT"_$char(13,10)),4)
+	do tf^%ut($data(^data6("goo")),5) ; was not sent, shouldn't be killed
+	do tf^%ut($zlength(return)>91300,6)
+	do stop(server)
+	;
+	; Same tests, but with gzip (it gets disabled right now for chunked data)
+	job start^%ydbwebreq:cmd="job --port 55730 --gzip"
+	hang .1
+	new server set server=$zjob
+	new httpStatus,return
+	do &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/getchunked")
+	do eq^%ut(httpStatus,200,7)
+	do tf^%ut(return[($char(13,10)_"global_sequential_nodes_query: subnode1subnode2"_$char(13,10)),8)
+	do tf^%ut(return[($char(10)_"End of Transmission"_$char(13,10)),9)
+	do tf^%ut(return'[($char(13,10)_"SHOULD NOT BE SENT"_$char(13,10)),10)
+	do tf^%ut($data(^data6("goo")),11) ; was not sent, shouldn't be killed
+	do tf^%ut($zlength(return)>91300,12)
+	do stop(server)
+	;
+	set $zgbldir=""
+	view "unsetenv":"ydb_gbldir"
+	open "/tmp/testdb.gld" close "/tmp/testdb.gld":delete
+	open "/tmp/mumps.dat" close "/tmp/mumps.dat":delete
 	quit
 	;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.

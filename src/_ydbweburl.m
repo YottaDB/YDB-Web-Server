@@ -3,13 +3,14 @@
 	; This routine is used to map URLs to entry points under
 	; the URLMAP entry point.
 	;
-URLMAP ;
+URLMAP  ; METHOD<SP>PATH<SP>PROCESSING ROUTINE<SP>Chunked Read processing routine
 	;;GET test/r/{routine?.1"%25".32AN} routine^%ydbwebapi
 	;;PUT test/r/{routine?.1"%25".32AN} putroutine^%ydbwebapi
 	;;GET /test/error err^%ydbwebapi
 	;;GET test/bigoutput bigoutput^%ydbwebapi
 	;;GET test/gloreturn1 gloreturn1^%ydbwebapi
 	;;GET test/gloreturn2 gloreturn2^%ydbwebapi
+	;;GET test/gloreturn3 gloreturn3^%ydbwebapi
 	;;GET /test/xml xml^%ydbwebapi
 	;;GET /test/empty empty^%ydbwebapi
 	;;GET test/customerror customerr^%ydbwebapi
@@ -26,6 +27,9 @@ URLMAP ;
 	;;GET test/env env^%ydbwebapi
 	;;GET test/gce gce^%ydbwebapi
 	;;GET test/ws-port wsport^%ydbwebapi
+	;;POST test/postchunked chunkedpost^%ydbwebapi
+	;;POST test/postchunkedinc chunkedpostinc^%ydbwebapi chunkCallback=chunkedpostincread^%ydbwebapi
+	;;GET test/getchunked chunkedget^%ydbwebapi
 	;;zzzzz
 	;
 	; Copyright (c) 2019 Christopher Edwards
