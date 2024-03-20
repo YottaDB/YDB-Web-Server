@@ -45,8 +45,17 @@ bigoutput ; GET /test/bigoutput - Used by Unit Tests to ensure large output is h
 	set httprsp("mime")="text/plain; charset=utf-8" ; type of data to send browser
 	quit
 	;
-gloreturn ; GET /test/gloreturn - Used by Unit Tests to ensure Global deleted properly
-	set httprsp=$name(^web("%ydbwebapi"))
+gloreturn1 ; GET /test/gloreturn1 - Used by Unit Tests to ensure Global deleted properly and $query works
+	set httprsp=$name(^web1("%ydbwebapi"))
+	set @httprsp="coo"_$char(13,10)
+	set @httprsp@(1)="boo"_$char(13,10)
+	set @httprsp@(2)="foo"_$char(13,10)
+	set ^web1("z")="WRONG DATA"
+	set httprsp("mime")="text/plain; charset=utf-8" ; type of data to send browser
+	quit
+	;
+gloreturn2 ; GET /test/gloreturn2 - Used by Unit Tests to ensure $query works on empty subscript
+	set httprsp=$name(^web2)
 	set @httprsp="coo"_$char(13,10)
 	set @httprsp@(1)="boo"_$char(13,10)
 	set @httprsp@(2)="foo"_$char(13,10)
@@ -287,7 +296,7 @@ filesyse ; 500
 	;
 	; Copyright (c) 2013-2020 Sam Habiel
 	; Copyright (c) 2018 Kenneth McGlothlen
-	; Copyright (c) 2022-2023 YottaDB LLC
+	; Copyright (c) 2022-2024 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.

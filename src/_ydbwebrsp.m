@@ -275,22 +275,24 @@ sendata ; write out the data as an HTTP response
 	do w("Content-Length: "_size_$char(13,10)_$char(13,10))
 	if 'size!(httpreq("method")="HEAD") do flush quit  ; flush buffer and quit if empty
 	;
-	; Auto encode to JSON?
-	;
 	new i,j
 	if rsptype=1 do            ; write out local variable
 	. if $data(httprsp)#2 do w(httprsp)
 	. if $data(httprsp)>1 set i=0 for  set i=$order(httprsp(i)) quit:'i  do w(httprsp(i))
+	;
 	if rsptype=2 do            ; write out global using indirection
+	. ; Write out the current node if valued
 	. if $data(@httprsp)#2 do w(@httprsp)
+	. ; If there are descendents...
 	. if $data(@httprsp)>1 do
+	. . ; Capture original for $query
 	. . new orig,ol set orig=httprsp,ol=$qlength(httprsp) ; Orig, Orig Length
 	. . new httpexit set httpexit=0
 	. . for  do  quit:httpexit
 	. . . set httprsp=$query(@httprsp)
-	. . . do:$get(httprsp)'="" w(@httprsp)
-	. . . if $get(httprsp)="" set httpexit=1
-	. . . else  if $get(@httprsp),$get(@orig),$NA(@httprsp,ol)'=$NA(@orig,ol) set httpexit=1
+	. . . if httprsp=""               set httpexit=1 quit
+	. . . if $name(@httprsp,ol)'=orig set httpexit=1 quit
+	. . . do w(@httprsp)
 	. . set httprsp=orig
 	. . ; Kill global after sending. https://github.com/shabiel/M-Web-Server/issues/44
 	. . kill @httprsp
@@ -382,7 +384,7 @@ rspline() ; writes out a response line based on httperr
 	; Portions of this code are public domain, but it was extensively modified
 	; Copyright (c) 2013-2020 Sam Habiel
 	; Copyright (c) 2018-2019 Christopher Edwards
-	; Copyright (c) 2022-2023 YottaDB LLC
+	; Copyright (c) 2022-2024 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.

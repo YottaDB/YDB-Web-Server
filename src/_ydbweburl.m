@@ -8,7 +8,8 @@ URLMAP ;
 	;;PUT test/r/{routine?.1"%25".32AN} putroutine^%ydbwebapi
 	;;GET /test/error err^%ydbwebapi
 	;;GET test/bigoutput bigoutput^%ydbwebapi
-	;;GET test/gloreturn gloreturn^%ydbwebapi
+	;;GET test/gloreturn1 gloreturn1^%ydbwebapi
+	;;GET test/gloreturn2 gloreturn2^%ydbwebapi
 	;;GET /test/xml xml^%ydbwebapi
 	;;GET /test/empty empty^%ydbwebapi
 	;;GET test/customerror customerr^%ydbwebapi
@@ -29,7 +30,7 @@ URLMAP ;
 	;
 	; Copyright (c) 2019 Christopher Edwards
 	; Copyright (c) 2019 Sam Habiel
-	; Copyright (c) 2022-2023 YottaDB LLC
+	; Copyright (c) 2022-2024 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.

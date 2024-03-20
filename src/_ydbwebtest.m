@@ -223,13 +223,61 @@ tlong ; @TEST get a long message
 	do eq^%ut($length(return),32769)
 	quit
 	;
-tKillGlo ; #TEST kill global after sending result in it
-	; We don't run this in the test suite since we need to ensure that our tests runs without a database
+tGlo    ; @TEST global tests 
+	; Create global directory
+	new x
+	new gdefile set gdefile="/tmp/mumps.gde"
+	open gdefile:newversion
+	use gdefile
+	write "change -segment DEFAULT -file=""/tmp/mumps.dat""",!
+	write "exit",!
+	close gdefile
+	open "pipe":(shell="/bin/bash":command="ydb_gbldir=/tmp/testdb.gld $ydb_dist/yottadb -r GDE @"_gdefile)::"pipe"
+	use "pipe"
+	for i=1:1 read x(i) quit:$zeof
+	close "pipe"
+	kill x
+	open "pipe":(shell="/bin/bash":command="ydb_gbldir=/tmp/testdb.gld $ydb_dist/mupip create")::"pipe"
+	use "pipe"
+	for i=1:1 read x(i) quit:$zeof
+	close "pipe"
+	open gdefile
+	close gdefile:delete
+
+	set $zgbldir="/tmp/testdb.gld"
+	job start^%ydbwebreq:cmd="job --port 55730"
+	hang .1
+	new server set server=$zjob
+	;
+	; Get data from global, and ensure that global is killed after data is sent
 	new httpStatus,return
-	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gloreturn")
-	do eq^%ut(httpStatus,200)
-	do tf^%ut(return["coo")
-	do tf^%ut('$d(^web("%ydbwebapi")))
+	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gloreturn1")
+	do eq^%ut(httpStatus,200,1)
+	do tf^%ut(return["coo",2)
+	do tf^%ut('$d(^web("%ydbwebapi")),3)
+	;
+	; #139: $query on a subscript does not terminate properly, continuing to send unrelated data
+	; In this test, we have to use command line curl as the plugin doesn't support --ignore-content-length,
+	; ... which is necessary to reproduce this bug
+	open "p":(shell="/bin/sh":command="curl -sS --ignore-content-length http://127.0.0.1:55730/test/gloreturn1")::"pipe"
+	use "p"
+	for i=1:1 read x(i) quit:$zeof
+	close "p"
+	do tf^%ut(x(4)'["WRONG DATA",4)
+	do tf^%ut($d(^web1("z")),5) ; should not be deleted
+	;
+	; Test gloreturn2, which uses an unsubscripted global. This tests $query termination on an empty string.
+	new httpStatus,return
+	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gloreturn2")
+	do eq^%ut(httpStatus,200,6)
+	do tf^%ut(return["coo",7)
+	do tf^%ut('$d(^web2))
+	;
+	do stop(server)
+	set $zgbldir=""
+	view "unsetenv":"ydb_gbldir"
+	open "/tmp/testdb.gld" close "/tmp/testdb.gld":delete
+	open "/tmp/mumps.dat" close "/tmp/mumps.dat":delete
 	quit
 	;
 tDC ; @TEST Test Disconnecting from the Server w/o talking
