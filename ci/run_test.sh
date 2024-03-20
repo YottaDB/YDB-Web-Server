@@ -1,5 +1,5 @@
 #!/bin/bash
-#   Copyright (c) 2022-2023 YottaDB LLC
+#   Copyright (c) 2022-2024 YottaDB LLC
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -29,10 +29,17 @@ else
 	log=1
 fi
 
+# Comment the ydb_env_set in if you need to test globals
+# We don't enable it as the server needs to run without globals by default
 if   [ "$1" = "server" ]; then
+	#source /opt/yottadb/current/ydb_env_set
 	exec /opt/yottadb/current/yottadb -r start^%ydbwebreq --port 9080 --log $log
 elif [ "$1" = "server-tls" ]; then
+	#source /opt/yottadb/current/ydb_env_set
 	exec /opt/yottadb/current/yottadb -r start^%ydbwebreq --tlsconfig ydbgui --log $log
+elif [ "$1" = "server-gzip" ]; then
+	#source /opt/yottadb/current/ydb_env_set
+	exec /opt/yottadb/current/yottadb -r start^%ydbwebreq --gzip --log $log
 elif [ "$1" = "bash" ] || [ "$1" = "shell" ]; then
 	exec /bin/bash
 elif [ "$1" = "debug" ]; then
