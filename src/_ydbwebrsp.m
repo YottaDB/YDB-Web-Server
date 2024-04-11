@@ -178,7 +178,7 @@ match(routine,args) ; evaluate paths in sequence until match found (else 404)
 	quit
 	;
 	;
-matchr(routine,args,authneeded) ; Match against _ydbweburl.m
+matchr(routine,args,authneeded,proceachchunk) ; Match against _ydbweburl.m
 	new method set method=httpreq("method")
 	if method="HEAD" set method="GET" ; just for here
 	new path set path=httpreq("path")
@@ -198,11 +198,14 @@ matchr(routine,args,authneeded) ; Match against _ydbweburl.m
 	; Tracked by issue #118
 	set authneeded=1
 	;
-	new seq,patmethod,fail
+	; Set chunk callback to empty by default
+	set proceachchunk=""
+	;
+	new seq,patmethod,fail,line,pattern
 	new done set done=0
-	for seq=1:1 set pattern=$zpiece($text(URLMAP+seq^%ydbweburl),";;",2,99) quit:pattern=""  quit:pattern="zzzzz"  do  quit:done
+	for seq=1:1 set line=$zpiece($text(URLMAP+seq^%ydbweburl),";;",2,99) quit:line=""  quit:line="zzzzz"  do  quit:done
 	. kill args
-	. set routine=$zpiece(pattern," ",3),patmethod=$zpiece(pattern," "),pattern=$zpiece(pattern," ",2),fail=0
+	. set routine=$zpiece(line," ",3),patmethod=$zpiece(line," "),pattern=$zpiece(line," ",2),fail=0
 	. if $extract(pattern)="/" set pattern=$extract(pattern,2,$length(pattern))
 	. if $length(pattern,"/")'=$length(path,"/") set routine="" quit  ; must have same number segments
 	. for i=1:1:$length(path,"/") do  quit:fail
@@ -215,6 +218,7 @@ matchr(routine,args,authneeded) ; Match against _ydbweburl.m
 	. . set args(argument)=pathseg
 	. if 'fail if patmethod'=method set fail=1
 	. set:fail routine="" set:'fail done=1
+	. if done set proceachchunk=$zpiece(line," ",4)
 	quit
 	;
 matchfs(routine) ; Match against the file system

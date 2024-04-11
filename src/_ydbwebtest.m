@@ -1264,6 +1264,35 @@ tRecChuncked ; @TEST Receive chunked data
 	do eq^%ut(return2,"100000^26")
 	quit
 	;
+tRecChunckedInc ; @TEST Received chunked data incrementally
+	new httpStatus,return,payload
+	set $zpiece(payload,"a",2**20)="a" ; 1MB
+	do &libcurl.init
+	do &libcurl.addHeader("Transfer-Encoding: chunked")
+	do &libcurl.do(.httpStatus,.return,"POST","http://127.0.0.1:55728/test/postchunkedinc",payload,"application/text",1,.headers)
+	do &libcurl.cleanup
+	do eq^%ut(httpStatus,200)
+	; 17 chunks processed
+	do tf^%ut($zl(return,$char(13,10)),17)
+	quit
+	;
+	;
+tExpect ; @TEST Test that 100-Expect is sent correctly.
+	; Cannot do this using libcurl plugin, as we need to post more than 1 MB
+	new x,i,a
+	set $zpiece(a,"a",2**20)="a" ; 1MB
+	open "2mbfile.txt":newversion
+	use "2mbfile.txt"
+	write a,!,a,!
+	open "p":(shell="/bin/sh":command="curl -vvv --header 'Transfer-Encoding: chunked' http://localhost:55728/test/postchunkedinc -d @2mbfile.txt")::"pipe"
+	use "p"
+	for i=1:1 read x(i) quit:$zeof
+	close "p"
+	new foundexpect set foundexpect=0
+	for i=0:0 set i=$order(x(i)) quit:'i  if x(i)["HTTP/1.1 100 Continue" set foundexpect=1 quit
+	do tf^%ut(foundexpect)
+	quit
+	;
 tSendChunked ; @TEST Send chunked data
 	; Create global directory as we use globals in this test
 	new x

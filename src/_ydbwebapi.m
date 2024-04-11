@@ -171,6 +171,18 @@ chunkedpost ; POST /test/postchunked Test for Chunked data
 	set httprsp=l_"^"_+last
 	quit
 	;
+chunkedpostincread ; Incremental read of each chunk
+	new l set l=0
+	new i for i=0:0 set i=$order(httpreq("body",i)) quit:'i  set l=l+$zlength(httpreq("body",i))
+	new last set last=$order(httpreq("body",""),-1)
+	set chunkedread($i(chunkedread))=l_"^"_+last
+	quit
+	;
+chunkedpostinc ; POST /text/postchunkedinc Incremental Read Chunk Test
+	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
+	new i for i=0:0 set i=$order(chunkedread(i)) quit:'i  set httprsp(i)=chunkedread(i)_$char(13,10)
+	quit	
+	;
 chunkedget ; GET /test/getchunked Test for Chunked data
 	set data1="data1"
 	set data2="data2"_$char(13,10)

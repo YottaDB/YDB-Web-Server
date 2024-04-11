@@ -234,10 +234,13 @@ next ; begin next request
 	for  set tcpx=$$rdcrlf() quit:'$zlength(tcpx)  do addhead(tcpx)
 	;
 	; -- Handle Contiuation Request
-	if $get(httpreq("header","expect"))="100-continue" do:httplog>0 logcn write "HTTP/1.1 100 Continue",$zchar(13,10,13,10),!
+	if $get(httpreq("header","expect"))="100-continue" do:httplog>0 logcn write "HTTP/1.1 100 Continue"_$zchar(13,10,13,10)
 	;
 	; -- decide how to read body, if any
 	if $zconvert($get(httpreq("header","transfer-encoding")),"l")="chunked" D
+	. ; -- See if we need to process each chunk separately
+	. new routine,args,authneeded,chunkcallback
+	. do matchr^%ydbwebrsp(.routine,.args,.authneeded,.chunkcallback)
 	. do rdchnks
 	if $get(httpreq("header","content-length"))>0 D
 	. use %ydbtcp:(nodelim) ; GT.M Stream mode
@@ -283,6 +286,11 @@ rdchnks ; read body in chunks
 	. do rdlen(declen,99,.line)
 	. use %ydbtcp:(delim=$zchar(13,10):chset="M") ; GT.M Delimiters
 	. set crlf=$$rdcrlf()
+	. if chunkcallback'="" do
+	.. if httplog>2 do stdout^%ydbwebutils("Running chunk callback "_chunkcallback)
+	.. do @chunkcallback
+	.. set line=0
+	.. kill httpreq("body")
 	quit
 	;
 rdlen(remain,timeout,line) ; read L bytes with timeout T
