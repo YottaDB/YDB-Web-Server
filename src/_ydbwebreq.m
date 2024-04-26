@@ -234,17 +234,15 @@ next ; begin next request
 	for  set tcpx=$$rdcrlf() quit:'$zlength(tcpx)  do addhead(tcpx)
 	;
 	; -- Handle Contiuation Request
-	if $get(httpreq("header","expect"))="100-continue" do:httplog>0 logcn write "HTTP/1.1 100 Continue"_$zchar(13,10,13,10)
+	if $get(httpreq("header","expect"))="100-continue" do:httplog>0 logcn write "HTTP/1.1 100 Continue",$zchar(13,10,13,10),!
 	;
 	; -- decide how to read body, if any
+	use %ydbtcp:(nodelim) ; GT.M Stream mode
 	if $zconvert($get(httpreq("header","transfer-encoding")),"l")="chunked" D
-	. ; -- See if we need to process each chunk separately
-	. new routine,args,authneeded,chunkcallback
-	. do matchr^%ydbwebrsp(.routine,.args,.authneeded,.chunkcallback)
-	. do rdchnks
+	. do rdchnks ; TODO: handle chunked input
+	. i httplog>2 ; log array of chunks
 	if $get(httpreq("header","content-length"))>0 D
-	. use %ydbtcp:(nodelim) ; GT.M Stream mode
-	. do rdlen(httpreq("header","content-length"),99,0)
+	. do rdlen(httpreq("header","content-length"),99)
 	. i httplog>2 do logbody
 	;
 	; -- build response (map path to routine & call, otherwise 404)   
@@ -274,27 +272,11 @@ rdcrlf() ; read a header line
 	quit line
 	;
 rdchnks ; read body in chunks
-	new hexlen,declen,crlf,done,line
-	if httplog>1 do stdout^%ydbwebutils("*** Reading chunks... ***")
-	set (done,line)=0
-	for  do  quit:done
-	. set hexlen=$$rdcrlf()
-	. set declen=$$hex2dec^%ydbwebutils($zconvert(hexlen,"U"))
-	. if declen=0 set crlf=$$rdcrlf() set done=1 quit
-	. if httplog>1 do stdout^%ydbwebutils("Will read "_declen)
-	. use %ydbtcp:(nodelim) ; GT.M Stream mode
-	. do rdlen(declen,99,.line)
-	. use %ydbtcp:(delim=$zchar(13,10):chset="M") ; GT.M Delimiters
-	. set crlf=$$rdcrlf()
-	. if chunkcallback'="" do
-	.. if httplog>2 do stdout^%ydbwebutils("Running chunk callback "_chunkcallback)
-	.. do @chunkcallback
-	.. set line=0
-	.. kill httpreq("body")
-	quit
+	quit  ; still need to implement
 	;
-rdlen(remain,timeout,line) ; read L bytes with timeout T
-	new x,length
+rdlen(remain,timeout) ; read L bytes with timeout T
+	new x,line,length
+	set line=0
 rdloop ;
 	; read until L bytes collected
 	; quit with what we have if read times out
@@ -380,7 +362,7 @@ logbody ; log the request body
 	quit
 	;
 logrsp ; log the response before sending
-	if '$data(httprsp) do stdout^%ydbwebutils("No response") quit
+	if '$length($get(httprsp))&'$order(httprsp("")) do stdout^%ydbwebutils("No response") quit
 	do stdout^%ydbwebutils("Response: ")
 	do stdoutzw^%ydbwebutils($name(httprsp))
 	quit

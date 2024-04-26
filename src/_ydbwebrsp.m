@@ -178,7 +178,7 @@ match(routine,args) ; evaluate paths in sequence until match found (else 404)
 	quit
 	;
 	;
-matchr(routine,args,authneeded,proceachchunk) ; Match against _ydbweburl.m
+matchr(routine,args,authneeded) ; Match against _ydbweburl.m
 	new method set method=httpreq("method")
 	if method="HEAD" set method="GET" ; just for here
 	new path set path=httpreq("path")
@@ -198,14 +198,11 @@ matchr(routine,args,authneeded,proceachchunk) ; Match against _ydbweburl.m
 	; Tracked by issue #118
 	set authneeded=1
 	;
-	; Set chunk callback to empty by default
-	set proceachchunk=""
-	;
-	new seq,patmethod,fail,line,pattern
+	new seq,patmethod,fail
 	new done set done=0
-	for seq=1:1 set line=$zpiece($text(URLMAP+seq^%ydbweburl),";;",2,99) quit:line=""  quit:line="zzzzz"  do  quit:done
+	for seq=1:1 set pattern=$zpiece($text(URLMAP+seq^%ydbweburl),";;",2,99) quit:pattern=""  quit:pattern="zzzzz"  do  quit:done
 	. kill args
-	. set routine=$zpiece(line," ",3),patmethod=$zpiece(line," "),pattern=$zpiece(line," ",2),fail=0
+	. set routine=$zpiece(pattern," ",3),patmethod=$zpiece(pattern," "),pattern=$zpiece(pattern," ",2),fail=0
 	. if $extract(pattern)="/" set pattern=$extract(pattern,2,$length(pattern))
 	. if $length(pattern,"/")'=$length(path,"/") set routine="" quit  ; must have same number segments
 	. for i=1:1:$length(path,"/") do  quit:fail
@@ -218,7 +215,6 @@ matchr(routine,args,authneeded,proceachchunk) ; Match against _ydbweburl.m
 	. . set args(argument)=pathseg
 	. if 'fail if patmethod'=method set fail=1
 	. set:fail routine="" set:'fail done=1
-	. if done set proceachchunk=$zpiece(line," ",4)
 	quit
 	;
 matchfs(routine) ; Match against the file system
@@ -232,9 +228,7 @@ sendata ; write out the data as an HTTP response
 	; rsptype=1  local variable
 	; rsptype=2  data in ^TMP($J)
 	;
-	; Write Buffer
-	new %ydbbuff
-	set %ydbbuff($io)=""
+	new %ydbbuff set %ydbbuff="" ; Write Buffer
 	;
 	; DKM - Send raw data.
 	if $get(httprsp("raw")) do  quit
@@ -247,16 +241,15 @@ sendata ; write out the data as an HTTP response
 	new size,rsptype,jsonout
 	;
 	; Set mime up, and auto-encode JSON if necessary
-	; Don't encode "chunked" data, as it's not final yet.
 	if '$data(httprsp("mime")) set httprsp("mime")="application/json; charset=utf-8"
-	if '$data(httprsp("chunked")),httprsp("mime")["application/json" D
+	if httprsp("mime")["application/json" D
 	. kill httprsp("mime")
 	. do encode^%ydbwebjson($name(httprsp),$name(jsonout),$name(%ydbjsonerror))
 	. set *httprsp=jsonout
 	. set httprsp("mime")="application/json; charset=utf-8"
 	;
 	new rspline set rspline=$$rspline()
-	set rsptype=$select($data(httprsp("pageable")):3,$data(httprsp("chunked")):4,$extract($get(httprsp))'="^":1,1:2)
+	set rsptype=$select($extract($get(httprsp))'="^":1,$data(httprsp("pageable")):3,1:2)
 	if rspline[304 set size=0 ; Not modified. Don't send data.
 	else  D
 	. if rsptype=1 set size=$$varsize^%ydbwebutils(.httprsp)
@@ -277,55 +270,45 @@ sendata ; write out the data as an HTTP response
 	if $get(httpreq("method"))="OPTIONS" do w("Access-Control-Max-Age: 86400"_$char(13,10))
 	do w("Access-Control-Allow-Origin: *"_$char(13,10))
 	;
-	; If on YottaDB, and we can zip, let's do that! For now, we don't support zipping chunked data
-	if httpoptions("gzip"),$get(httpreq("header","accept-encoding"))["gzip",'$data(httprsp("chunked")) goto gzip
-	;
-	if rsptype=4 goto chunked
+	if httpoptions("gzip"),$get(httpreq("header","accept-encoding"))["gzip" goto gzip  ; If on GT.M, and we can zip, let's do that!
 	;
 	do w("Content-Length: "_size_$char(13,10)_$char(13,10))
 	if 'size!(httpreq("method")="HEAD") do flush quit  ; flush buffer and quit if empty
 	;
-	if rsptype=1 do rsptype1 ; write out local variable
-	if rsptype=2 do rsptype2 ; write out global using indirection
-	do flush                 ; flush buffer
-	quit
+	new i,j
+	if rsptype=1 do            ; write out local variable
+	. if $data(httprsp)#2 do w(httprsp)
+	. if $data(httprsp)>1 set i=0 for  set i=$order(httprsp(i)) quit:'i  do w(httprsp(i))
 	;
-rsptype1 ; [internal to reuse code]
-	new i
-	if $data(httprsp)#2 do w(httprsp)
-	if $data(httprsp)>1 set i=0 for  set i=$order(httprsp(i)) quit:'i  do w(httprsp(i))
-	quit
-	;
-rsptype2 ; [internal to reuse code]
-	; Write out the current node if valued
-	if $data(@httprsp)#2 do w(@httprsp)
-	; If there are descendents...
-	if $data(@httprsp)>1 do
-	. ; Capture original for $query
-	. new orig,ol set orig=httprsp,ol=$qlength(httprsp) ; Orig, Orig Length
-	. new httpexit set httpexit=0
-	. for  do  quit:httpexit
-	. . set httprsp=$query(@httprsp)
-	. . if httprsp=""               set httpexit=1 quit
-	. . if $name(@httprsp,ol)'=orig set httpexit=1 quit
-	. . do w(@httprsp)
-	. set httprsp=orig
-	; Kill global after sending. https://github.com/shabiel/M-Web-Server/issues/44
-	do:httplog>2 stdout^%ydbwebutils("Killing "_httprsp_" after sending")
-	kill @httprsp
+	if rsptype=2 do            ; write out global using indirection
+	. ; Write out the current node if valued
+	. if $data(@httprsp)#2 do w(@httprsp)
+	. ; If there are descendents...
+	. if $data(@httprsp)>1 do
+	. . ; Capture original for $query
+	. . new orig,ol set orig=httprsp,ol=$qlength(httprsp) ; Orig, Orig Length
+	. . new httpexit set httpexit=0
+	. . for  do  quit:httpexit
+	. . . set httprsp=$query(@httprsp)
+	. . . if httprsp=""               set httpexit=1 quit
+	. . . if $name(@httprsp,ol)'=orig set httpexit=1 quit
+	. . . do w(@httprsp)
+	. . set httprsp=orig
+	. . ; Kill global after sending. https://github.com/shabiel/M-Web-Server/issues/44
+	. . kill @httprsp
+	do flush ; flush buffer
 	quit
 	;
 w(data) ; EP to write data
 	; ZEXCEPT: %ydbbuff - Buffer in Symbol Table
-	if $zlength(%ydbbuff($io))+$zlength(data)>32000 do flush
-	set %ydbbuff($io)=%ydbbuff($io)_data
+	if $zlength(%ydbbuff)+$zlength(data)>32000 do flush
+	set %ydbbuff=%ydbbuff_data
 	quit
 	;
 flush ; EP to flush written data
 	; ZEXCEPT: %ydbbuff - Buffer in Symbol Table
-	write %ydbbuff($io)
-	write:'$data(%gzip) !
-	set %ydbbuff($io)=""
+	write %ydbbuff,!
+	set %ydbbuff=""
 	quit
 	;
 gzip ; EP to write gzipped content
@@ -343,12 +326,13 @@ gzip ; EP to write gzipped content
 	use file
 	;
 	; Write out data
-	new %gzip set %gzip=1
-	set %ydbbuff($io)=""
-	if rsptype=1 do rsptype1 ; write out local variable
-	if rsptype=2 do rsptype2 ; write out global using indirection
-	do flush
-	kill %gzip
+	new i,j
+	if rsptype=1 do            ; write out local variable
+	. if $data(httprsp)#2 write httprsp
+	. if $data(httprsp)>1 set i=0 for  set i=$order(httprsp(i)) quit:'i  write httprsp(i)
+	if rsptype=2 do            ; write out global using indirection
+	. if $data(@httprsp)#2 write @httprsp
+	. if $data(@httprsp)>1 set i=0 for  set i=$order(@httprsp@(i)) quit:'i  write @httprsp@(i)
 	;
 	; Close
 	set $x=0 ; needed to prevent adding an EOF to the file
@@ -376,47 +360,6 @@ gzip ; EP to write gzipped content
 	do flush
 	;
 	quit
-	;
-chunked ; Send chunked data
-	do:httplog>1 stdout^%ydbwebutils("Sending chunked data")
-	do w("Transfer-Encoding: chunked"_$char(13,10)_$char(13,10))
-	; Process each chunk
-	new i for i=0:0 set i=$order(httprsp("chunked",i)) quit:'i  do
-	. new chunk set chunk=httprsp("chunked",i)
-	. ; if chunk is a routine reference x^y do x^y
-	. if $zlength(chunk,"^")=2,$zextract(chunk)'="^" do @chunk if 1
-	. ; else, chunk is a local/global variable. Send that.
-	. else  do wchunk(chunk)
-	; end of all chunks (0 CRLF CRLF)
-	do w("0"_$char(13,10,13,10))
-	do flush
-	quit
-	;
-wchunk(httprsp) ; [Private] Send global/local variable using chunked encoding
-	new size set size=$$refsize^%ydbwebutils(.httprsp)
-	new hexsize set hexsize=$$dec2hex^%ydbwebutils(size)
-	;
-	do:httplog>2 stdout^%ydbwebutils("Sending chunk with size "_size)
-	do w(hexsize_$char(13,10))
-	do rsptype2 ; write out global/local using indirection
-	;
-	; now send end of this chunk (CRLF)
-	do w($char(13,10))
-	quit
-	;
-sendonechunk(x) ; [Public] Wrapper API to send data in a chunk
-	; If called as an extrinsic, it will return the amount of data sent
-	new oldio set oldio=$io
-	use %ydbtcp
-	new size set size=$zlength(x)
-	do:httplog>2 stdout^%ydbwebutils("Sending chunk with size "_size)
-	new hexsize set hexsize=$$dec2hex^%ydbwebutils(size)
-	; Each chunk send hexsize, data, then CRLF
-	do w^%ydbwebrsp(hexsize_$char(13,10))
-	do w^%ydbwebrsp(x)
-	do w^%ydbwebrsp($char(13,10))
-	use oldio
-	quit:$quit size quit
 	;
 rsperror ; set response to be an error response
 	; Count is a temporary variable to track multiple errors... don't send it back
