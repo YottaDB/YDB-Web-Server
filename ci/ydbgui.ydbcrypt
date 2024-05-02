@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 YottaDB LLC
+#   Copyright (c) 2024 YottaDB LLC
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ tls: {
     format: "PEM";
     cert: "/mwebserver/certs/ydbgui.pem";
     key:  "/mwebserver/certs/ydbgui.key";
+    ssl-options: "SSL_OP_NO_SSLv2:SSL_OP_NO_SSLv3:SSL_OP_NO_TLSv1:SSL_OP_NO_TLSv1_1";
+    cipher-list: "ECDH+AESGCM:ECDH+CHACHA20:ECDH+AES256:!aNULL:!SHA1:!AESCCM";
   };
   client: {
     CAfile: "/mwebserver/certs/ydbgui.pem";
