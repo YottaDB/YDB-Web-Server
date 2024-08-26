@@ -45,7 +45,7 @@ jsonesc ;; @TEST create JSON escaped string
 	set x=$$esc^%ydbwebjson("This contains tab"_$char(9)_" and control"_$char(22)_" characters")
 	do eq^%ut("This contains tab\t and control\u0016 characters",x)
 	set x=$$esc^%ydbwebjson("This has embedded NUL"_$char(0)_" character.")
-	do eq^%ut("This has embedded NUL character.",x)
+	do eq^%ut("This has embedded NUL\u0000 character.",x)
 	quit
 basic ;; @TEST encode basic object as JSON
 	new x,json
@@ -180,6 +180,28 @@ extarray ;; @TEST No top object; first level is an array
 	do eq^%ut(t2(1),"[{""n"":123,""s"":1},{""N1"":true,""N2"":""true""}]")
 	quit
 	;
+charzeroone ;; @TEST $char(0)/$char(1) should be encoded; decode should reverse
+	; Previously $char(0) was removed, $char(1) was sent out as is
+	new c for c=0,1 do
+	. new x,y,json,oringal,jerr
+	. set x(1)="foo"_$char(c)_"coo"
+	. set x(2)=$char(c)
+	. set x(3)=$char(c,c,c,c,c,c)
+	. set x(4)="boo"_$char(c)
+	. set x(5)=$char(c)_"a"
+	. do encode^%ydbwebjson("x","json","jerr")
+	. do eq^%ut($data(jerr),0)
+	. if c=0 do eq^%ut(json(1),"[""foo\u0000coo"",""\u0000"",""\u0000\u0000\u0000\u0000\u0000\u0000"",""boo\u0000"",""\u0000a""]")
+	. if c=1 do eq^%ut(json(1),"[""foo\u0001coo"",""\u0001"",""\u0001\u0001\u0001\u0001\u0001\u0001"",""boo\u0001"",""\u0001a""]")
+	. do decode^%ydbwebjson("json","y","jerr")
+	. do eq^%ut($data(jerr),0)
+	. do eq^%ut(x(1),y(1))
+	. do eq^%ut(x(2),y(2))
+	. do eq^%ut(x(3),y(3))
+	. do eq^%ut(x(4),y(4))
+	. do eq^%ut(x(5),y(5))
+	quit
+	;
 buildy(label) ; build y array based on label
 	; expects y from EXAMPLE
 	new i,x
@@ -194,7 +216,7 @@ target(id,offset) ; values to test against
 	; Copyright 2016 Accenture Federal Services
 	; Copyright 2013-2019 Sam Habiel
 	; Copyright 2019 Christopher Edwards
-	; Copyright (c) 2022-2023 YottaDB LLC
+	; Copyright (c) 2022-2024 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.

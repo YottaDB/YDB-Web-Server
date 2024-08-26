@@ -1,4 +1,4 @@
-#   Copyright (c) 2023 YottaDB LLC
+#   Copyright (c) 2023-2024 YottaDB LLC
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -11,6 +11,31 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
+# To build a YDB Web Server Docker image and run tests, run:
+# docker build -t mws .
+# Run Tests
+# docker run -v $PWD/src:/mwebserver/r --rm mws tests
+
+# Various other commands:
+# Run Server on port 9080
+# docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws server
+#
+# Run Server on port 9080 with level 2 verbosity
+# docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws server 2
+#
+# Run Bash
+# docker run -v $PWD/src:/mwebserver/r --rm -it -p 9080:9080 mws bash
+#
+# Run debugger (starts server on 9080, and you need to zstep into)
+# docker run --rm -it -p 9080:9080 mws debug [entrypoint]
+#
+# Run Server TLS on port 9080
+# docker run -p 9080:9080 -v $PWD/src:/mwebserver/r --rm -it mws server-tls
+#
+# Run Debug TLS on port 9080:
+# docker run -p 9080:9080 -v $PWD/src:/mwebserver/r --rm -it mws debug-tls
+
 FROM yottadb/yottadb-base:latest-master
 
 ARG DEBIAN_FRONTEND=noninteractive

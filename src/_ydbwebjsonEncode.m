@@ -80,7 +80,8 @@ serval(%ydbroot,%ydbsub) ; Serialize X into appropriate JSON representation
 	; handle the numeric, boolean, and null types
 	if $data(@%ydbroot@(%ydbsub,"\n")) set:$length(@%ydbroot@(%ydbsub,"\n")) %ydbx=@%ydbroot@(%ydbsub,"\n") do concat quit  ; when +X'=X
 	if '$data(@%ydbroot@(%ydbsub,"\s")),$length(%ydbx) do  quit:%ydbdone
-	. if %ydbx']]$char(1) set %ydbx=$$jnum(%ydbx) do concat set %ydbdone=1 quit
+	. if $extract(%ydbx)=$char(0) quit  ; This should be handled as a string
+	. if %ydbx']]$char(0) set %ydbx=$$jnum(%ydbx) do concat set %ydbdone=1 quit
 	. if %ydbx="true"!(%ydbx="false")!(%ydbx="null") do concat set %ydbdone=1 quit
 	; otherwise treat it as a string type
 	set %ydbx=""""_$$esc(%ydbx) ; open quote
@@ -123,8 +124,8 @@ esc(x) ; Escape string for JSON
 	. set from=$extract(pair),to=$extract(pair,2)
 	. set x=y,y=$zpiece(x,from) for i=2:1:$length(x,from) set y=y_"\"_to_$zpiece(x,from,i)
 	if y?.e1.c.e set x=y,y="" for i=1:1:$length(x) set from=$ascii(x,i) do
-	. ; skip nul character, otherwise encode ctrl-char
-	. if from<32 quit:from=0  set y=y_$$ucode(from) quit
+	. ; encode ctrl-char
+	. if from<32 set y=y_$$ucode(from) quit
 	. if from>126,(from<160) set y=y_$$ucode(from) quit
 	. set y=y_$extract(x,i)
 	quit y
@@ -148,7 +149,7 @@ errx(id,val) ; Set the appropriate error message
 	; Copyright 2016 Accenture Federal Services
 	; Copyright 2013-2019 Sam Habiel
 	; Copyright 2019 Christopher Edwards
-	; Copyright (c) 2022-2023 YottaDB LLC
+	; Copyright (c) 2022-2024 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.
