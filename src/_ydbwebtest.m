@@ -1030,7 +1030,7 @@ tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	; Normal Test
 	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
 	do eq^%ut(httpStatus,200,1)
-	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/$ydb_gbldir.gld",2)
+	do eq^%ut(return,"|",2)
 	;
 	; Test with sending header
 	do &libcurl.init
@@ -1038,12 +1038,12 @@ tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
 	do &libcurl.cleanup
 	do eq^%ut(httpStatus,200,3)
-	do eq^%ut(return,"/tmp/testdb.gld^/tmp/testdb.gld",4)
+	do eq^%ut(return,"/tmp/testdb.gld|/tmp/testdb.gld",4)
 	;
 	; Normal Test again
 	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
 	do eq^%ut(httpStatus,200,11)
-	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/$ydb_gbldir.gld",12)
+	do eq^%ut(return,"|",12)
 	;
 	; Test two calls, one crashes. Make sure that the original value is restored
 	new httpStatus1,return1
@@ -1056,7 +1056,7 @@ tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	do eq^%ut(httpStatus1,500,5)
 	do tf^%ut(return1["YDB-E-SETECODE",6)
 	do eq^%ut(httpStatus2,200,7)
-	do eq^%ut(return2,"/data/$ydb_gbldir.gld^/data/$ydb_gbldir.gld",8)
+	do eq^%ut(return2,"|",8)
 	do &libcurl.cleanup
 	;
 	open "/tmp/testdb.gld":readonly
@@ -1148,17 +1148,17 @@ tGCE	; @TEST Change Global, Environment, and Directory together
 	open gdefile
 	close gdefile:delete
 	;
-	new httpStatus,return,status
+	new httpStatus,return
 	;
 	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
 	do eq^%ut(httpStatus,200,1)
-	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/^",2)
+	do eq^%ut(return,"|/data/|",2)
 	;
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
 	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
 	do eq^%ut(httpStatus,200,3)
-	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/^/foo/",4)
+	do eq^%ut(return,"|/data/|/foo/",4)
 	do &libcurl.cleanup
 	;
 	do &libcurl.init
@@ -1167,12 +1167,12 @@ tGCE	; @TEST Change Global, Environment, and Directory together
 	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
 	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
 	do eq^%ut(httpStatus,200,5)
-	do eq^%ut(return,"/tmp/testdb.gld^/tmp/^/foo/",6)
+	do eq^%ut(return,"/tmp/testdb.gld|/tmp/|/foo/",6)
 	do &libcurl.cleanup
 	;
 	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
 	do eq^%ut(httpStatus,200,11)
-	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/^",22)
+	do eq^%ut(return,"|/data/|",22)
 	;
 	; Test two calls, one crashes. Make sure that the original value is restored
 	new httpStatus1,return1
@@ -1186,7 +1186,7 @@ tGCE	; @TEST Change Global, Environment, and Directory together
 	do eq^%ut(httpStatus1,500,7)
 	do tf^%ut(return1["YDB-E-SETECODE",8)
 	do eq^%ut(httpStatus2,200,9)
-	do eq^%ut(return,"/data/$ydb_gbldir.gld^/data/^",10)
+	do eq^%ut(return,"|/data/|",10)
 	do &libcurl.cleanup
 	;
 	open "/tmp/testdb.gld":readonly

@@ -290,8 +290,8 @@ uppercase ; GET /test/uppercase Use upper case variables
 globaldir ; GET /test/zgbldir Test X-YDB-Global-Directory
 	if $get(httpargs("crash"))=1 set $ecode=",USIMERR,"
 	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
-	if $zgbldir'["$ydb_gbldir.gld" set ^x=1 ; This ensures that we actually write to a database (the old value only applies if no database directory has been set-up)
-	set httprsp=$zgbldir_"^"_$ztrnlnm("ydb_gbldir")
+	if $zgbldir'="" set ^x=1 ; This ensures that we actually write to a database (the old value only applies if no database directory has been set-up)
+	set httprsp=$zgbldir_"|"_$ztrnlnm("ydb_gbldir")
 	quit
 	;
 cwd	; GET /test/cwd Test X-YDB-Working-Directory
@@ -307,7 +307,7 @@ env	; GET /test/env Test X-YDB-Env-Vars
 gce	; GET /test/gce Test X-YDB-Global-Directory with X-YDB-Working-Directory with X-YDB-Env-Vars
 	if $get(httpargs("crash"))=1 set $ecode=",USIMERR,"
 	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
-	set httprsp=$zgbldir_"^"_$zdirectory_"^"_$ztrnlnm("ydb_dir")
+	set httprsp=$zgbldir_"|"_$zdirectory_"|"_$ztrnlnm("ydb_dir")
 	quit
 	;
 wsport ; GET /test/ws-port Tests --ws-port parameter
