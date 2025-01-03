@@ -264,7 +264,7 @@ sendata ; write out the data as an HTTP response
 	. set httprsp("mime")="application/json; charset=utf-8"
 	;
 	new rspline set rspline=$$rspline()
-	set rsptype=$select($data(httprsp("pageable")):3,$data(httprsp("chunked")):4,$extract($get(httprsp))'="^":1,1:2)
+	set rsptype=$select($data(httprsp("pageable")):3,$data(httprsp("chunked")):4,$zextract($get(httprsp))'="^":1,1:2)
 	if rspline[304 set size=0 ; Not modified. Don't send data.
 	else  D
 	. if rsptype=1 set size=$$varsize^%ydbwebutils(.httprsp)
@@ -449,7 +449,7 @@ rspline() ; writes out a response line based on httperr
 	; Portions of this code are public domain, but it was extensively modified
 	; Copyright (c) 2013-2020 Sam Habiel
 	; Copyright (c) 2018-2019 Christopher Edwards
-	; Copyright (c) 2022-2024 YottaDB LLC
+	; Copyright (c) 2022-2025 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.

@@ -310,11 +310,16 @@ gce	; GET /test/gce Test X-YDB-Global-Directory with X-YDB-Working-Directory wit
 	set httprsp=$zgbldir_"|"_$zdirectory_"|"_$ztrnlnm("ydb_dir")
 	quit
 	;
-wsport ; GET /test/ws-port Tests --ws-port parameter
+wsport	; GET /test/ws-port Tests --ws-port parameter
 	set httprsp("mime")="text/plain; charset=utf-8" ; Character set of the return URL
 	set httprsp=httpoptions("ws-port")
 	quit
-	;	
+	;
+getbinary	; GET /test/getbinary Tests binary data
+	set httprsp("mime")="application/octet-stream"
+	set httprsp=$zchar(128)
+	quit
+	;
 filesys(argpath) ; Handle reads from File system.
 	; Ensure Directory has a trailing slash
 	; Otherwise a directory like $ydb_dist/plugin/etc/ydbgui is not readable
@@ -398,7 +403,7 @@ filesyse ; 500
 	;
 	; Copyright (c) 2013-2020 Sam Habiel
 	; Copyright (c) 2018 Kenneth McGlothlen
-	; Copyright (c) 2022-2024 YottaDB LLC
+	; Copyright (c) 2022-2025 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.
@@ -411,4 +416,3 @@ filesyse ; 500
 	;WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 	;See the License for the specific language governing permissions and
 	;limitations under the License.
-

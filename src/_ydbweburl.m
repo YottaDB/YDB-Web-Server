@@ -30,11 +30,12 @@ URLMAP  ; METHOD<SP>PATH<SP>PROCESSING ROUTINE<SP>Chunked Read processing routin
 	;;POST test/postchunked chunkedpost^%ydbwebapi
 	;;POST test/postchunkedinc chunkedpostinc^%ydbwebapi chunkCallback=chunkedpostincread^%ydbwebapi
 	;;GET test/getchunked chunkedget^%ydbwebapi
+	;;GET test/getbinary getbinary^%ydbwebapi
 	;;zzzzz
 	;
 	; Copyright (c) 2019 Christopher Edwards
 	; Copyright (c) 2019 Sam Habiel
-	; Copyright (c) 2022-2024 YottaDB LLC
+	; Copyright (c) 2022-2025 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.

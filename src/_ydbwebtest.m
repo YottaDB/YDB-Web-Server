@@ -1351,6 +1351,13 @@ tSendChunked ; @TEST Send chunked data
 	open "/tmp/mumps.dat" close "/tmp/mumps.dat":delete
 	quit
 	;
+tBinary ; @TEST Test binary data is sent back successfully (#146)
+	new httpStatus,return
+	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/getbinary")
+	do eq^%ut(httpStatus,200)
+	do eq^%ut(return,$zch(128))
+	quit
+	;
 tStop ; @TEST Stop the Server. MUST BE LAST TEST HERE.
 	new options set options("port")=55728
 	do stop^%ydbwebreq(.options)
@@ -1366,7 +1373,7 @@ EOR ;
 	;
 	; Copyright (c) 2018-2020 Sam Habiel
 	; Copyright (c) 2019 Christopher Edwards
-	; Copyright (c) 2022-2024 YottaDB LLC
+	; Copyright (c) 2022-2025 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.
