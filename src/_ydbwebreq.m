@@ -336,7 +336,7 @@ etcode ; error trap when calling out to routines
 	; Restore original global direcotry
 	if $data(httpoldgbldir) view "setenv":"ydb_gbldir":httpoldgbldir
 	; Set the error information and write it as the HTTP response.
-	use %ydbtcp
+	use %ydbtcp:(nodelim) ; GT.M Stream mode
 	new errtxt set errtxt=$zstatus
 	new errarr
 	set errarr("message")=errtxt
@@ -357,7 +357,7 @@ etdc ; error trap for client disconnect ; not a true M trap
 	halt ; Stop process 
 	;
 etbail ; error trap of error traps
-	use %ydbtcp
+	use %ydbtcp:(nodelim) ; GT.M Stream mode
 	write "HTTP/1.1 500 Internal Server Error",$zchar(13,10),$zchar(13,10),!
 	close %ydbtcp
 	halt  ; exit because we can't recover
@@ -490,7 +490,7 @@ jobCommandErrorFile() ; [$$ Private] Get job command error file
 	; Portions of this code are public domain, but it was extensively modified
 	; Copyright (c) 2013-2019 Sam Habiel
 	; Copyright (c) 2018-2019 Christopher Edwards
-	; Copyright (c) 2022-2024 YottaDB LLC
+	; Copyright (c) 2022-2025 YottaDB LLC
 	;
 	;Licensed under the Apache License, Version 2.0 (the "License");
 	;you may not use this file except in compliance with the License.
