@@ -23,7 +23,7 @@ MWS provides the following features:
 ## Dependencies
 - YottaDB must be installed
 - Operational: libsodium (supplied by libsodium-dev[el] package)(optional), gzip (optional), date. 
-- Installer only: cmake, pkg-config, ld.gold.
+- Installer only: cmake, pkg-config, ld.
 
 ## Installation
 Download this repository (git or [download zip](https://gitlab.com/YottaDB/Util/YDB-Web-Server/-/archive/master/YDB-Web-Server-master.zip) and unzip)
