@@ -139,6 +139,8 @@ match(routine,args) ; evaluate paths in sequence until match found (else 404)
 	; No authorization needed to serve web pages
 	if routine="" set authneeded=0 DO matchfs(.routine)
 	;
+	if $get(httperr) quit  ; Error already set in matchfs
+	;
 	; Okay. Do we have a routine to execute?
 	if routine="" do setError^%ydbwebutils(404,"Not Found") quit
 	;

@@ -516,6 +516,59 @@ tHomePage ; @Test Getting index.html page
 	do stop(serverjob)
 	quit
 	;
+tPathTraversal ; @TEST Path traversal
+	new serverjob
+	open "pipe":(shell="/bin/sh":command="mkdir -p /tmp/goodpath/ /tmp/badpath":readonly:writeonly)::"pipe"
+	use "pipe" close "pipe"
+	if $zclose set $ecode=",U1," ; something went wrong
+	;
+	; Write a couple of files into /tmp/goodpath and /tmp/badpath
+	new f1,f2
+	set f1="/tmp/goodpath/myfile.txt"
+	set f2="/tmp/badpath/myfile.txt"
+	;
+	open f1:newversion use f1 write "good file",! close f1
+	open f2:newversion use f2 write "bad file",! close f2
+	;
+	; Now start a webserver
+	job start^%ydbwebreq:cmd="job --port 55730 --directory /tmp/goodpath"
+	set serverjob=$zjob
+	;
+	; Need to make sure server is started before we ask curl to connect
+	open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+	else  do FAIL^%ut("Failed to connect to server") quit
+	close "sock"
+	;
+	new httpStatus,return
+	do &libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/myfile.txt")
+	do eq^%ut(httpStatus,200)
+	do tf^%ut(return["good file")
+	;
+	; Need to use --path-as-is which is not exposed in the plugin
+	; Try several bad paths with curl:
+	new url for url="../badpath/myfile.txt","%2e%2e/badpath/myfile.txt","%c0%ae%c0%ae/badpath/myfile.txt","..%2fbadpath/myfile.txt","%2e%2e%2fbadpath/myfile.txt" do
+	. open "p":(shell="/bin/sh":command="curl --fail-with-body -Ss --path-as-is http://127.0.0.1:55730/"_url)::"pipe"
+	. use "p"
+	. kill return 
+	. for i=1:1 read return(i) quit:$zeof
+	. kill return(i) ; last node is empty
+	. close "p"
+	. ; return(1) has the http status code:
+	. ; return(2) has the error message:
+	. ; curl: (22) The requested URL returned error: 403
+	. ; {"apiVersion":1.1,"error":{"code":403,"errors":[{"errname":"Forbidden","message":"Path falls outside start-up directory","reason":403}],"request":"GET \/..\/NOTICE ","toperror":"Forbidden"}}
+	. set return=return(1)_$char(13,10)_return(2) ; just in case traversal happens
+	. do tf^%ut(return'["bad file","path traversed when it shouldn't be "_url)
+	. ;
+	. set httpstatus=$piece(return(1),": ",2)
+	. do tf^%ut("^403^404^"["^"_httpstatus_"^")
+	. ;
+	. if httpstatus=403 do tf^%ut(return(2)["Path falls outside start-up directory")
+	. if httpstatus=404 do tf^%ut(return(2)["File not found")
+	. do eq^%ut($zclose,22,url) ; curl error
+	do stop(serverjob)
+	quit
+	;
 CORS ; @TEST Make sure CORS headers are returned
 	new httpStatus,return,headers,headerarray
 	do &libcurl.curl(.httpStatus,.return,"OPTIONS","http://127.0.0.1:55728/r/kbbotest.m",,,,.headers)

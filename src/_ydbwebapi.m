@@ -328,6 +328,21 @@ filesys(argpath) ; Handle reads from File system.
 	; get the actual path
 	new path set path=httpoptions("directory")_argpath
 	;
+	; Verify that no path traversal is being done.
+	; NB1: not using "SYMLINK" arg to $ZPARSE since I think it's a valid case have to
+	; have paths symlinked by the user under the web root directory
+	; NB2: Aware of the possibility of users using Unicode and URL-Encoded
+	; paths. They are in the test tPathTraversal. They are not handled because:
+	;      1. YottaDB does not decode Unicode paths
+	;      2. We do not url decode paths, only arguments; any url encoded
+	;         paths will be passed as is and won't be traversed
+	new rootpath set rootpath=$zparse(httpoptions("directory"))
+	new reqfile   set reqfile=$zparse(path)
+	do:httplog>2 stdout^%ydbwebutils("rootpath: "_rootpath)
+	do:httplog>2 stdout^%ydbwebutils("requested file: "_reqfile)
+	if reqfile="" do setError^%ydbwebutils("404","File not found") quit
+	if rootpath'=$zextract(reqfile,1,$length(rootpath)) do setError^%ydbwebutils("403","Path falls outside start-up directory") quit
+	;
 	; GT.M errors out on file not found
 	new $etrap set $etrap="goto filesyse"
 	;
