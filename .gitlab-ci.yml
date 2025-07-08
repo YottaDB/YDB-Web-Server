@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 YottaDB LLC
+#   Copyright (c) 2022-2025 YottaDB LLC
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ services:
   - docker:dind
 
 commit-verify:
-  image: ubuntu:22.04
+  image: ubuntu:24.04
   stage: build
   script:
     - apt-get update
