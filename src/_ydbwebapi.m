@@ -123,6 +123,7 @@ logout ; POST /api/logout (with token in the header)
 	;
 authmode ; GET /api/auth-mode
 	set httprsp("auth")=$select(HTTPHASUSERS:"true",1:"false")
+	set httprsp("env-mod")=$select(httpoptions("allow-env-mod"):"true",1:"false")
 	quit
 	;
 xml ; GET /test/xml XML sample

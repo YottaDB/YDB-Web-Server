@@ -17,16 +17,21 @@ start2 ; From the top
 	;
 	if '$data(httpoptions("port"))          set httpoptions("port")=9080                    ; --port nnnn
 	;
-	; --debug is so that we run our server in the foreground.
 	; You can place breakpoints at child+1 or anywhere else.
+	;
+	; General Options
+	; --debug is so that we run our server in the foreground.
 	if '$data(httpoptions("debug"))         set httpoptions("debug")=""                     ; --debug
 	if '$data(httpoptions("tlsconfig"))     set httpoptions("tlsconfig")=""                 ; --tlsconfig myconfig
 	if '$data(httpoptions("log"))           set httpoptions("log")=0                        ; --log n
 	if '$data(httpoptions("gzip"))          set httpoptions("gzip")=0                       ; --gzip
 	if '$data(httpoptions("readwrite"))     set httpoptions("readwrite")=0                  ; --readwrite
 	if '$data(httpoptions("directory"))     set httpoptions("directory")=$zdirectory        ; --directory /x/y/z
+	;
+	; YDBGUI options
 	if '$data(httpoptions("ws-port"))       set httpoptions("ws-port")=0			; --ws-port nnnnn
 	if '$data(httpoptions("client-config")) set httpoptions("client-config")=""             ; --client-config /x/y/z
+	if '$data(httpoptions("allow-env-mod")) set httpoptions("allow-env-mod")=""             ; --allow-env-mod
 	;
 	; Authentication/Authorization Options
 	if '$data(httpoptions("auth-stdin"))    set httpoptions("auth-stdin")=0                 ; --auth-stdin
@@ -77,6 +82,12 @@ start2 ; From the top
 	write:httpoptions("ws-port") "using port "_httpoptions("ws-port")_" for web sockets "
 	write:$zlength(httpoptions("client-config")) "with client-config "_httpoptions("client-config")_" "
 	write !
+	if httpoptions("allow-env-mod") do
+	. write "NOTICE: You have specified that clients should be able to modify their",!
+	. write "environment. This feature is normally used in development environments. If you",!
+	. write "are using it in a production environment, make sure you have additional security",! 
+	. write "appropriate to your use case.",!
+	. write:'httphasusers "NO USERS ARE SET UP.",!
 	if httplog,'parentStdoutAvailable write "Logging will be disabled as "_parentStdout_" is not writable",!
 	;
 	; Device ID
@@ -477,7 +488,7 @@ cmdline(httpoptions) ; [Private] Process command line httpoptions
 	... set httpoptions(o)=$$trimleadingdelimstr^%XCMD(.cmdline)
 	... do trimleadingstr^%XCMD(.cmdline," ")
 	. ;
-	. new o for o="gzip","readwrite","auth-stdin" do
+	. new o for o="gzip","readwrite","auth-stdin","allow-env-mod" do
 	.. if $$trimleadingstr^%XCMD(.cmdline,o) set httpoptions(o)=1
 	.. do trimleadingstr^%XCMD(.cmdline," ")
 	quit

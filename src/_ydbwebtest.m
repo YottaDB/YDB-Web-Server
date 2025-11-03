@@ -920,6 +920,8 @@ tauthMode ; @TEST /api/auth-mode
 	do eq^%ut(httpStatus,200)
 	do decode^%ydbwebjson($name(return),$name(json))
 	do eq^%ut(json("auth"),"false")
+	; Check that we have the env-mod key
+	do eq^%ut(json("env-mod"),"false")
 	;
 	kill json
 	;
@@ -936,6 +938,8 @@ tauthMode ; @TEST /api/auth-mode
 	do eq^%ut(httpStatus,200)
 	do decode^%ydbwebjson($name(return),$name(json))
 	do eq^%ut(json("auth"),"true")
+	; Check that we have the env-mod key
+	do eq^%ut(json("env-mod"),"false")
 	;
 	; now stop the webserver again
 	do stop(passwdJob)
@@ -1060,7 +1064,16 @@ tUppercase ; @TEST uppercase HTTP variables
 	do eq^%ut(return,"boo")
 	quit
 	;
-tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
+tGloDir	; @TEST Custom Global Directory using X-YDB-Global-Directory
+	; Start a webserver with ability to change environment
+	job start^%ydbwebreq:cmd="job --port 55730 --allow-env-mod"
+	;
+	; Need to make sure server is started before we ask curl to connect
+	open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+	else  do FAIL^%ut("Failed to connect to server") quit
+	close "sock"
+	;
+	new envserver set envserver=$zjob
 	new x
 	new gdefile set gdefile="/tmp/mumps.gde"
 	open gdefile:newversion
@@ -1081,20 +1094,28 @@ tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	close gdefile:delete
 	;
 	; Normal Test
-	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
+	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/zgbldir")
 	do eq^%ut(httpStatus,200,1)
 	do eq^%ut(return,"|",2)
 	;
 	; Test with sending header
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
-	new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
+	new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/zgbldir")
 	do &libcurl.cleanup
 	do eq^%ut(httpStatus,200,3)
 	do eq^%ut(return,"/tmp/testdb.gld|/tmp/testdb.gld",4)
 	;
+	; Test with sending header to the server that doesn't have the env change option
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
+	new status set status=$&libcurl.do(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
+	do &libcurl.cleanup
+	do eq^%ut(httpStatus,200,13)
+	do eq^%ut(return,"|",14)
+	;
 	; Normal Test again
-	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/zgbldir")
+	new status set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/zgbldir")
 	do eq^%ut(httpStatus,200,11)
 	do eq^%ut(return,"|",12)
 	;
@@ -1104,8 +1125,8 @@ tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	;
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
-	set status=$&libcurl.do(.httpStatus1,.return1,"GET","http://127.0.0.1:55728/test/zgbldir?crash=1")
-	set status=$&libcurl.do(.httpStatus2,.return2,"GET","http://127.0.0.1:55728/test/zgbldir")
+	set status=$&libcurl.do(.httpStatus1,.return1,"GET","http://127.0.0.1:55730/test/zgbldir?crash=1")
+	set status=$&libcurl.do(.httpStatus2,.return2,"GET","http://127.0.0.1:55730/test/zgbldir")
 	do eq^%ut(httpStatus1,500,5)
 	do tf^%ut(return1["YDB-E-SETECODE",6)
 	do eq^%ut(httpStatus2,200,7)
@@ -1114,24 +1135,44 @@ tGlobalDir ; @TEST Custom Global Directory using X-YDB-Global-Directory
 	;
 	open "/tmp/testdb.gld":readonly
 	close "/tmp/testdb.gld":delete
+
+	; now stop the webserver 
+	do stop(envserver)
 	quit
 	;
 tCWD	; @TEST Change $ZDIRECTORY using X-YDB-Working-Directory
+	; Start a webserver with ability to change environment
+	job start^%ydbwebreq:cmd="job --port 55730 --allow-env-mod"
+	;
+	; Need to make sure server is started before we ask curl to connect
+	open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+	else  do FAIL^%ut("Failed to connect to server") quit
+	close "sock"
+	;
+	new envserver set envserver=$zjob
 	new httpStatus,return,status
 	;
-	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/cwd")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/cwd")
 	do eq^%ut(httpStatus,200,1)
 	do eq^%ut(return,"/data/",2)
 	;
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
-	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/cwd")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/cwd")
 	do eq^%ut(httpStatus,200,3)
 	do eq^%ut(return,"/tmp/",4)
 	do &libcurl.cleanup
 	;
-	; Normal Test again
+	; Test with sending header to the server that doesn't have the env change option
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
 	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/cwd")
+	do eq^%ut(httpStatus,200,13)
+	do eq^%ut(return,"/data/",14)
+	do &libcurl.cleanup
+	;
+	; Normal Test again
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/cwd")
 	do eq^%ut(httpStatus,200,11)
 	do eq^%ut(return,"/data/",22)
 	;
@@ -1140,30 +1181,50 @@ tCWD	; @TEST Change $ZDIRECTORY using X-YDB-Working-Directory
 	new httpStatus2,return2
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
-	set status=$&libcurl.curl(.httpStatus1,.return1,"GET","http://127.0.0.1:55728/test/cwd?crash=1")
-	set status=$&libcurl.curl(.httpStatus2,.return2,"GET","http://127.0.0.1:55728/test/cwd")
+	set status=$&libcurl.curl(.httpStatus1,.return1,"GET","http://127.0.0.1:55730/test/cwd?crash=1")
+	set status=$&libcurl.curl(.httpStatus2,.return2,"GET","http://127.0.0.1:55730/test/cwd")
 	do eq^%ut(httpStatus1,500,5)
 	do tf^%ut(return1["YDB-E-SETECODE",6)
 	do eq^%ut(httpStatus2,200,7)
 	do eq^%ut(return2,"/data/",8)
 	do &libcurl.cleanup
+	;
+	; now stop the webserver 
+	do stop(envserver)
 	quit
 	;
 tEnv	; @TEST Change environment using X-YDB-Env-Vars
+	; Start a webserver with ability to change environment
+	job start^%ydbwebreq:cmd="job --port 55730 --allow-env-mod"
+	;
+	; Need to make sure server is started before we ask curl to connect
+	open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+	else  do FAIL^%ut("Failed to connect to server") quit
+	close "sock"
+	;
+	new envserver set envserver=$zjob
 	new httpStatus,return,status
 	;
-	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/env")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/env")
 	do eq^%ut(httpStatus,200,1)
 	do eq^%ut(return,"",2)
 	;
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
-	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/env")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/env")
 	do eq^%ut(httpStatus,200,3)
 	do eq^%ut(return,"/foo/",4)
 	do &libcurl.cleanup
 	;
+	; Test with sending header to the server that doesn't have the env change option
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
 	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/env")
+	do eq^%ut(httpStatus,200,13)
+	do eq^%ut(return,"",14)
+	do &libcurl.cleanup
+	;
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/env")
 	do eq^%ut(httpStatus,200,11)
 	do eq^%ut(return,"",22)
 	;
@@ -1172,16 +1233,28 @@ tEnv	; @TEST Change environment using X-YDB-Env-Vars
 	new httpStatus2,return2
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
-	set status=$&libcurl.curl(.httpStatus1,.return1,"GET","http://127.0.0.1:55728/test/env?crash=1")
-	set status=$&libcurl.curl(.httpStatus2,.return2,"GET","http://127.0.0.1:55728/test/env")
+	set status=$&libcurl.curl(.httpStatus1,.return1,"GET","http://127.0.0.1:55730/test/env?crash=1")
+	set status=$&libcurl.curl(.httpStatus2,.return2,"GET","http://127.0.0.1:55730/test/env")
 	do eq^%ut(httpStatus1,500,5)
 	do tf^%ut(return1["YDB-E-SETECODE",6)
 	do eq^%ut(httpStatus2,200,7)
 	do eq^%ut(return2,"",8)
 	do &libcurl.cleanup
+	;
+	; now stop the webserver 
+	do stop(envserver)
 	quit
 	;
 tGCE	; @TEST Change Global, Environment, and Directory together
+	; Start a webserver with ability to change environment
+	job start^%ydbwebreq:cmd="job --port 55730 --allow-env-mod"
+	;
+	; Need to make sure server is started before we ask curl to connect
+	open "sock":(connect="127.0.0.1:55730:TCP":attach="client"):5:"socket"
+	else  do FAIL^%ut("Failed to connect to server") quit
+	close "sock"
+	;
+	new envserver set envserver=$zjob
 	new x
 	new gdefile set gdefile="/tmp/mumps.gde"
 	open gdefile:newversion
@@ -1203,27 +1276,45 @@ tGCE	; @TEST Change Global, Environment, and Directory together
 	;
 	new httpStatus,return
 	;
-	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gce")
 	do eq^%ut(httpStatus,200,1)
 	do eq^%ut(return,"|/data/|",2)
 	;
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
-	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gce")
 	do eq^%ut(httpStatus,200,3)
 	do eq^%ut(return,"|/data/|/foo/",4)
+	do &libcurl.cleanup
+	;
+	; Behavior w/o env change flag
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
+	do eq^%ut(httpStatus,200,13)
+	do eq^%ut(return,"|/data/|",14)
 	do &libcurl.cleanup
 	;
 	do &libcurl.init
 	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
 	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
 	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
-	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gce")
 	do eq^%ut(httpStatus,200,5)
 	do eq^%ut(return,"/tmp/testdb.gld|/tmp/|/foo/",6)
 	do &libcurl.cleanup
 	;
+	; Behavior w/o env change flag
+	do &libcurl.init
+	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
+	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
+	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
 	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55728/test/gce")
+	do eq^%ut(httpStatus,200,15)
+	do eq^%ut(return,"|/data/|",16)
+	do &libcurl.cleanup
+	;
+	set status=$&libcurl.curl(.httpStatus,.return,"GET","http://127.0.0.1:55730/test/gce")
 	do eq^%ut(httpStatus,200,11)
 	do eq^%ut(return,"|/data/|",22)
 	;
@@ -1234,8 +1325,8 @@ tGCE	; @TEST Change Global, Environment, and Directory together
 	do &libcurl.addHeader("X-YDB-Global-Directory: /tmp/testdb.gld")
 	do &libcurl.addHeader("X-YDB-Working-Directory: /tmp/")
 	do &libcurl.addHeader("X-YDB-Env-Vars: ydb_rel=r200; ydb_dir=/foo/")
-	set status=$&libcurl.curl(.httpStatus1,.return1,"GET","http://127.0.0.1:55728/test/gce?crash=1")
-	set status=$&libcurl.curl(.httpStatus2,.return2,"GET","http://127.0.0.1:55728/test/gce")
+	set status=$&libcurl.curl(.httpStatus1,.return1,"GET","http://127.0.0.1:55730/test/gce?crash=1")
+	set status=$&libcurl.curl(.httpStatus2,.return2,"GET","http://127.0.0.1:55730/test/gce")
 	do eq^%ut(httpStatus1,500,7)
 	do tf^%ut(return1["YDB-E-SETECODE",8)
 	do eq^%ut(httpStatus2,200,9)
@@ -1244,6 +1335,9 @@ tGCE	; @TEST Change Global, Environment, and Directory together
 	;
 	open "/tmp/testdb.gld":readonly
 	close "/tmp/testdb.gld":delete
+	;
+	; now stop the webserver 
+	do stop(envserver)
 	quit
 	;
 twsport ; @TEST Test --ws-port flag

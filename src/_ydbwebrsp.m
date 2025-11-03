@@ -66,29 +66,32 @@ respond ; find entry point to handle request and call it
 	if '$data(%webjsonerror) do
 	. new httpoldgbldir,httpoldcwd,httpoldenv
 	. ;
-	. ; If a custom global directory is supplied, switch to that global directory
-	. if $data(httpreq("header","x-ydb-global-directory")) set httpoldgbldir=$zgbldir new $zgbldir do
-	.. set $zgbldir=httpreq("header","x-ydb-global-directory")
-	.. view "setenv":"ydb_gbldir":httpreq("header","x-ydb-global-directory")
-	.. do:httplog>0 stdout^%ydbwebutils("Using Alternate global directory "_$zgbldir)
+	. ; Handle switching features
+	. if httpoptions("allow-env-mod") set httpoldgbldir=$zgbldir new $zgbldir do
+	.. ; If a custom global directory is supplied, switch to that global directory
+	.. if $data(httpreq("header","x-ydb-global-directory")) do
+	... set $zgbldir=httpreq("header","x-ydb-global-directory")
+	... view "setenv":"ydb_gbldir":httpreq("header","x-ydb-global-directory")
+	... do:httplog>0 stdout^%ydbwebutils("Using Alternate global directory "_$zgbldir)
+	.. ;
+	.. ; if a custom working directory is supplied, switch to that
+	.. if $data(httpreq("header","x-ydb-working-directory")) do
+	... set httpoldcwd=$zdirectory
+	... set $zdirectory=httpreq("header","x-ydb-working-directory")
+	... do:httplog>0 stdout^%ydbwebutils("Using Alternate working directory "_$zdirectory)
+	.. ;
+	.. ; If custom environment variables were requested
+	.. if $data(httpreq("header","x-ydb-env-vars")) do
+	... new i,var for i=1:1:$length(httpreq("header","x-ydb-env-vars"),";") do
+	.... set var=$$L^%TRIM($piece(httpreq("header","x-ydb-env-vars"),";",i))
+	.... new varname,varvalue
+	.... set varname=$piece(var,"=",1)
+	.... set varvalue=$piece(var,"=",2)
+	.... set httpoldenv(varname)=$ztrnlnm(varname)
+	.... view "setenv":varname:varvalue
+	.... do:httplog>0 stdout^%ydbwebutils("Setting Env Var "_varname_"="_varvalue)
 	. ;
-	. ; if a custom working directory is supplied, switch to that
-	. if $data(httpreq("header","x-ydb-working-directory")) do
-	.. do:httplog>0 stdout^%ydbwebutils("Using Alternate working directory "_$zdirectory)
-	.. set httpoldcwd=$zdirectory
-	.. set $zdirectory=httpreq("header","x-ydb-working-directory")
-	. ;
-	. ; If custom environment variables were requested
-	. if $data(httpreq("header","x-ydb-env-vars")) do
-	.. new i,var for i=1:1:$length(httpreq("header","x-ydb-env-vars"),";") do
-	... set var=$$L^%TRIM($piece(httpreq("header","x-ydb-env-vars"),";",i))
-	... new varname,varvalue
-	... set varname=$piece(var,"=",1)
-	... set varvalue=$piece(var,"=",2)
-	... set httpoldenv(varname)=$ztrnlnm(varname)
-	... do:httplog>0 stdout^%ydbwebutils("Setting Env Var "_varname_"="_varvalue)
-	... view "setenv":varname:varvalue
-	. ;
+	. ; This is the actual Web Service call
 	. do @routine
 	. ;
 	. ; Restore the original values

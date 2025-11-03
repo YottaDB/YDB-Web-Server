@@ -61,7 +61,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 project(YDBWebServer
 	LANGUAGES M
-	VERSION 4.5.5)
+	VERSION 5.0.0)
 find_package(YOTTADB REQUIRED)
 
 configure_file(src/_ydbwebversion.m.in src/_ydbwebversion.m @ONLY)
