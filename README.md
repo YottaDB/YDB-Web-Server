@@ -89,5 +89,12 @@ A full list of the options accepted is as follows:
   where a client configuration file is located on the file system. The server
   itself does not use this. Available in variable
   `httpoptions("client-config")`.
+* `--allow-env-mod` Allow clients to modify the environment, including setting
+  the current working directory and the global directory. This feature is
+  intended to be used in development environments with the YottaDB GUI when the
+  latter is started without a global directory - it will let the GUI navigate to
+  any environments you have access to as a Linux user. If you use this in
+  production (e.g. with a SystemD start-up), you need to take appropriate
+  security measures depending on your use case.
 
 Full documentation is located [here](https://docs.yottadb.com/Plugins/ydbwebserver.html).
